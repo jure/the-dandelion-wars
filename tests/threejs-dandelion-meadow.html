@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Three.js Dandelion Meadow with Hills</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@v0.167.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@v0.167.0/examples/jsm/"
+          }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Add orbit controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Create a terrain
+        function createTerrain(width, height, widthSegments, heightSegments) {
+            const geometry = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments);
+            const material = new THREE.MeshPhongMaterial({ color: 0x3a9e3a, wireframe: false });
+            
+            const terrain = new THREE.Mesh(geometry, material);
+            terrain.rotation.x = -Math.PI / 2;
+            
+            const vertices = terrain.geometry.attributes.position.array;
+            for (let i = 0; i < vertices.length; i += 3) {
+                vertices[i + 2] = Math.random() * 2;  // Random height
+            }
+            terrain.geometry.attributes.position.needsUpdate = true;
+            terrain.geometry.computeVertexNormals();
+            
+            return terrain;
+        }
+
+        const terrain = createTerrain(50, 50, 50, 50);
+        scene.add(terrain);
+
+        // Create dandelion function
+        function createDandelion() {
+            const dandelionGroup = new THREE.Group();
+
+            // Create the stem
+            const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 3, 32);
+            const stemMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            stem.position.y = 1.5;
+            dandelionGroup.add(stem);
+
+            // Create the flower head
+            const flowerGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const flowerMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00 });
+            const flowerHead = new THREE.Mesh(flowerGeometry, flowerMaterial);
+            flowerHead.position.y = 3;
+            dandelionGroup.add(flowerHead);
+
+            // Create a combined seed geometry (stem + top)
+            const stemRadius = 0.005;
+            const stemHeight = 0.2;
+            const stemSegments = 8;
+            const seedStemGeometry = new THREE.CylinderGeometry(stemRadius, stemRadius, stemHeight, stemSegments);
+            seedStemGeometry.translate(0, stemHeight / 2, 0);
+
+            const topRadius = 0.03;
+            const topHeight = 0.06;
+            const topSegments = 8;
+            const topGeometry = new THREE.ConeGeometry(topRadius, topHeight, topSegments);
+            topGeometry.translate(0, stemHeight + topHeight / 2, 0);
+
+            const seedGeometry = BufferGeometryUtils.mergeGeometries([seedStemGeometry, topGeometry]);
+
+            // Create instanced mesh for seeds
+            const seedsMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+            const instancedSeeds = new THREE.InstancedMesh(seedGeometry, seedsMaterial, 200);
+            dandelionGroup.add(instancedSeeds);
+
+            // Position and orient seeds
+            const seedPositions = fibonacciSphere(200, 0.55);
+            const dummy = new THREE.Object3D();
+            seedPositions.forEach((position, index) => {
+                dummy.position.copy(position).add(flowerHead.position);
+                const direction = new THREE.Vector3().subVectors(dummy.position, flowerHead.position).normalize();
+                const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+                dummy.setRotationFromQuaternion(quaternion);
+                dummy.updateMatrix();
+                instancedSeeds.setMatrixAt(index, dummy.matrix);
+            });
+
+            instancedSeeds.instanceMatrix.needsUpdate = true;
+
+            return dandelionGroup;
+        }
+
+        // Function to distribute points evenly on a sphere
+        function fibonacciSphere(samples = 200, radius = 0.5) {
+            const points = [];
+            const phi = Math.PI * (3 - Math.sqrt(5));
+            for (let i = 0; i < samples; i++) {
+                const y = 1 - (i / (samples - 1)) * 2;
+                const radiusAtY = Math.sqrt(1 - y * y);
+                const theta = phi * i;
+                const x = Math.cos(theta) * radiusAtY;
+                const z = Math.sin(theta) * radiusAtY;
+                points.push(new THREE.Vector3(x * radius, y * radius, z * radius));
+            }
+            return points;
+        }
+
+        // Scatter dandelions on the terrain
+        function scatterDandelions(count) {
+            for (let i = 0; i < count; i++) {
+                const dandelion = createDandelion();
+                const x = Math.random() * 50 - 25;
+                const z = Math.random() * 50 - 25;
+                const y = getTerrainHeight(x, z);
+                dandelion.position.set(x, y, z);
+                scene.add(dandelion);
+            }
+        }
+
+        // Helper function to get terrain height at a given point
+        function getTerrainHeight(x, z) {
+            const raycaster = new THREE.Raycaster();
+            raycaster.set(new THREE.Vector3(x, 10, z), new THREE.Vector3(0, -1, 0));
+            const intersects = raycaster.intersectObject(terrain);
+            return intersects.length > 0 ? intersects[0].point.y : 0;
+        }
+
+        scatterDandelions(20);  // Scatter 20 dandelions
+
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // Position the camera
+        camera.position.set(0, 10, 30);
+        controls.target.set(0, 5, 0);
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resizing
+        window.addEventListener('resize', onWindowResize, false);
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

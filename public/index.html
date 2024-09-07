@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="theme-color" content="#000000" />
+    <meta property="og:title" content="Dandelethal">
+    <meta property="og:type" content="website" />
+    <meta property="og:description" content="A WebXR game for JS13K game jam.">
+    <!-- <meta property="og:image" content="temp">
+    <meta property="og:url" content="temp"> -->
+    <meta name="twitter:card" content="summary_large_image">
+    <title>Dandelethal</title>
+    <style>
+      body { margin: 0; background: black }
+      canvas { display: block; }
+      .b {
+        border: 9px solid #fff;
+        border-image: linear-gradient(45deg, #266F56, #C52F34) 1;
+      }
+      .u {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%); 
+        margin-right: -33%;
+        font-family: Courier, monospace;
+        font-size: 1.3em;
+        color: #fff;
+        background: rgba(0,0,0,0.6);
+
+        padding: 1em;
+        box-sizing: border-box;
+        overflow: auto;
+        text-align: center;
+      }
+      @media screen and (min-width: 1024px) {
+        .u {
+          max-width: 50%;
+        }
+      }
+
+      .c {
+        display: block;
+        margin: 0 auto;
+        font-size: 1em;
+        padding: 1em 2em;
+        margin-top: 1em;
+        border: 1px solid #fff;
+        background: rgba(0,0,0,0.5);
+        color: #fff;
+        cursor: pointer;
+      }
+      #i {
+        display: none;
+      }
+      #d {
+        font-size: 1em;
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: bold;
+      }
+      #m {
+        font-size: 1em;
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: bold;
+      }
+      #p {
+        display: none;
+      }
+      h1 { 
+        margin-top: 0em;
+      }
+
+    </style>
+    <script type="importmap"> { "imports": { "three": "https://js13kgames.com/webxr-src/2024/three.js" } } </script>
+  </head>
+
+  <body>
+    <div id="s" class="b u">
+      <h1>Dandelethal</h1>
+      <p>A scourge has attacked Earth and in the year 2113 dandelions have become weaponized.</p>
+
+      <button id="x" class="c">Continue</button>
+    </div>
+    <div id="i" class="b u">
+      <h1>Dandelethal</h1>
+      <p>Pick and blow the dandelions. But careful...</p>
+      <p>Difficulty</p>
+      <select id="d" >
+        <option value="0">Easy</option>
+        <option value="1">So so</option>
+        <option value="2">Hard</option>
+        <option value="3">Don't do it</option>
+      </select>
+      <p>Map</p>
+      <select id="m" >
+        <option value="1">Tutorial</option>
+        <option value="2">Large field</option>
+        <option value="3">All around you</option>
+      </select>
+      <button id="b" class="c">Play</button>
+
+    </div>
+    <div id="p" class="b u">
+      Paused 
+    </div>
+  </body>
+</html>
+
