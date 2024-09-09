@@ -72,7 +72,9 @@
       }
 
     </style>
-    <script type="importmap"> { "imports": { "three": "https://js13kgames.com/webxr-src/2024/three.js" } } </script>
+    <!-- <script type="importmap"> { "imports": { "three": "https://js13kgames.com/webxr-src/2024/three.module.js" } } </script> TODO --> 
+    <script type="importmap"> { "imports": { "three": "/three.module.js" } } </script>
+
   </head>
 
   <body>
@@ -85,21 +87,7 @@
     <div id="i" class="b u">
       <h1>Dandelethal</h1>
       <p>Pick and blow the dandelions. But careful...</p>
-      <p>Difficulty</p>
-      <select id="d" >
-        <option value="0">Easy</option>
-        <option value="1">So so</option>
-        <option value="2">Hard</option>
-        <option value="3">Don't do it</option>
-      </select>
-      <p>Map</p>
-      <select id="m" >
-        <option value="1">Tutorial</option>
-        <option value="2">Large field</option>
-        <option value="3">All around you</option>
-      </select>
       <button id="b" class="c">Play</button>
-
     </div>
     <div id="p" class="b u">
       Paused 

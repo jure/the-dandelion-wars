@@ -115,7 +115,7 @@ class OrbitControls extends THREE.EventDispatcher {
     this.enabled = true;
 
     // "target" sets the location of focus, where the object orbits around
-    this._target = new THREE.Vector3();
+    this._target = new THREE.Vector3(0, 2, 0);
 
     // How far you can dolly in and out ( PerspectiveCamera only )
     this._minDistance = 0;

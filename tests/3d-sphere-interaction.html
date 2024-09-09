@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Sphere Interaction - Ray-based Targeting</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Use arrow keys to rotate the camera. Spheres are colored based on distance to the targeting ray.</div>
+    <script>
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create spheres
+        const spheres = [];
+        const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+
+        // Function to distribute points evenly on a sphere
+        function fibonacciSphere(samples = 50, radius = 10) {
+            const points = [];
+            const phi = Math.PI * (3 - Math.sqrt(5));
+
+            for (let i = 0; i < samples; i++) {
+                const y = 1 - (i / (samples - 1)) * 2;
+                const radius_at_y = Math.sqrt(1 - y * y);
+                const theta = phi * i;
+
+                const x = Math.cos(theta) * radius_at_y;
+                const z = Math.sin(theta) * radius_at_y;
+
+                points.push(new THREE.Vector3(x, y, z).multiplyScalar(radius));
+            }
+
+            return points;
+        }
+
+        // Create and position spheres
+        const positions = fibonacciSphere(50, 10);
+        positions.forEach(position => {
+            const material = new THREE.MeshPhongMaterial({ color: 0xffffff });
+            const sphere = new THREE.Mesh(sphereGeometry, material);
+            sphere.position.copy(position);
+            scene.add(sphere);
+            spheres.push(sphere);
+        });
+
+        // Set up camera position
+        camera.position.set(0, 0, 0);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 1, 0);
+        scene.add(directionalLight);
+
+        // Create targeting cube
+        const targetingMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true, side: THREE.DoubleSide });
+        const targetingGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const targetingCube = new THREE.Mesh(targetingGeometry, targetingMaterial);
+        targetingCube.scale.set(1, 1, 5);
+        targetingCube.position.z = -10;
+
+        
+        camera.add(targetingCube);
+        scene.add(camera);
+        // Rotation speed
+        const rotationSpeed = 0.05;
+
+        // Handle key events
+        document.addEventListener('keydown', (event) => {
+            switch (event.code) {
+                case 'ArrowLeft':
+                    camera.rotation.y += rotationSpeed;
+                    break;
+                case 'ArrowRight':
+                    camera.rotation.y -= rotationSpeed;
+                    break;
+                case 'ArrowUp':
+                    camera.rotation.x -= rotationSpeed;
+                    break;
+                case 'ArrowDown':
+                    camera.rotation.x += rotationSpeed;
+                    break;
+            }
+            // updateTargetingLine();
+        });
+
+        // function updateTargetingLine() {
+        //     const direction = new THREE.Vector3(0, 0, 0);
+        //     camera.getWorldDirection(direction);
+
+        //     // Rotate the targeting cube to face the camera direction
+        //     targetingCube.position.copy(direction).multiplyScalar(10);
+        // }
+
+        function updateSpheresColor() {
+            const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const raycaster = new THREE.Raycaster(camera.position, cameraDirection);
+            
+            spheres.forEach(sphere => {
+                const distance = raycaster.ray.distanceToPoint(sphere.position);
+                const normalizedDistance = Math.min(distance / 6, 1); // Normalize to [0, 1]
+                
+                // Create a color gradient from green (close) to red (far)
+                const color = new THREE.Color();
+                color.setHSL((1 - normalizedDistance) * 0.3, 1, 0.5);
+                
+                sphere.material.color = color;
+            });
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            updateSpheresColor();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initial update
+        // updateTargetingLine();
+    </script>
+</body>
+</html>

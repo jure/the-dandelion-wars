@@ -45,6 +45,12 @@ void main() {
 
   // Assuming `vel` is your velocity or direction vector and is normalized
   mat3 orientation = lookAt(normalize(vel));
+  // But we need to flip it the other way around
+  orientation = orientation * mat3(
+    -1, 0, 0,
+    0, 1, 0,
+    0, 0, -1
+  );
 
   // Transform vertex position
   newPos = orientation * newPos;

@@ -31,7 +31,6 @@
     "source-map-loader": "^3.0.0",
     "style-loader": "^3.3.1",
     "terser-webpack-plugin": "^5.3.9",
-    "three": "^0.156.1",
     "webpack": "^5.88.2",
     "webpack-bundle-analyzer": "^4.9.0",
     "webpack-dev-server": "^4.6.0",
@@ -41,7 +40,7 @@
   "scripts": {
     "start": "node scripts/start.js",
     "server": "node scripts/server.js",
-    "build-final": "node scripts/build.js && npx roadroller -M 512 -O2 build/main.js -o build/main.js && npx roadroller -M 512 -O2 build/waveProcessor.js -o build/waveProcessor.js && advzip -4 build/build.zip -a build/index.html build/main.js build/waveProcessor.js && stat -f%z build/build.zip",
+    "build-final": "node scripts/build.js && npx roadroller -M 512 -O2 build/main.js -o build/main.js && advzip -4 build/build.zip -a build/index.html build/main.js && stat -f%z build/build.zip",
     "build-f-norr": "node scripts/build.js && advzip -4 build/build.zip -a build/index.html build/main.js build/waveProcessor.js && stat -f%z build/build.zip",
     "build": "node scripts/build.js && stat -f%z build/main.js",
     "test": "node scripts/test.js --env=jsdom",

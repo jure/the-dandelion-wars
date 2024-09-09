@@ -2,6 +2,201 @@ import * as THREE from "three";
 import vertexShader from "./textMaker.vertex.glsl";
 import fragmentShader from "./textMaker.fragment.glsl";
 
+const letters = {
+  "A": [
+    [, 1],
+    [1, , 1],
+    [1, , 1],
+    [1, 1, 1],
+    [1, , 1],
+  ],
+  "B": [
+    [1, 1],
+    [1, , 1],
+    [1, 1],
+    [1, , 1],
+    [1, 1],
+  ],
+  "C": [[, 1, 1], [1], [1], [1], [, 1, 1]],
+  "D": [
+    [1, 1],
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [1, 1],
+  ],
+  "E": [[1, 1, 1], [1], [1, 1], [1], [1, 1, 1]],
+  "F": [[1, 1, 1], [1], [1, 1], [1], [1]],
+  "G": [[, 1, 1], [1], [1, , 1, 1], [1, , , 1], [, 1, 1]],
+  "H": [
+    [1, , 1],
+    [1, , 1],
+    [1, 1, 1],
+    [1, , 1],
+    [1, , 1],
+  ],
+  "I": [
+    [1, 1, 1],
+    [, 1],
+    [, 1],
+    [, 1],
+    [1, 1, 1],
+  ],
+  "J": [
+    [, , 1],
+    [, , 1],
+    [, , 1],
+    [1, , 1],
+    [, 1],
+  ],
+  "K": [
+    [1, , 1],
+    [1, , 1],
+    [1, 1],
+    [1, , 1],
+    [1, , 1],
+  ],
+  "L": [[1], [1], [1], [1], [1, 1, 1]],
+  "M": [
+    [1, , , 1],
+    [1, 1, 1, 1],
+    [1, , , 1],
+    [1, , , 1],
+    [1, , , 1],
+  ],
+  "N": [
+    [1, , , 1],
+    [1, 1, , 1],
+    [1, , 1, 1],
+    [1, , , 1],
+    [1, , , 1],
+  ],
+  "O": [
+    [, 1],
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [, 1],
+  ],
+  "P": [[1, 1], [1, , 1], [1, 1], [1], [1]],
+  "Q": [
+    [, 1],
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [, 1, , 1],
+  ],
+  "R": [
+    [1, 1],
+    [1, , 1],
+    [1, 1],
+    [1, , 1],
+    [1, , 1],
+  ],
+  "S": [[, 1, 1], [1], [, 1], [, , 1], [1, 1]],
+  "T": [
+    [1, 1, 1],
+    [, 1],
+    [, 1],
+    [, 1],
+    [, 1],
+  ],
+  "U": [
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [, 1],
+  ],
+  "V": [
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [, 1],
+  ],
+  "W": [
+    [1, , , 1],
+    [1, , , 1],
+    [1, , , 1],
+    [1, 1, 1, 1],
+    [, 1, 1],
+  ],
+  "X": [
+    [1, , 1],
+    [1, , 1],
+    [, 1],
+    [1, , 1],
+    [1, , 1],
+  ],
+  "Y": [
+    [1, , 1],
+    [1, , 1],
+    [, 1],
+    [, 1],
+    [, 1],
+  ],
+  "Z": [[1, 1, 1], [, , 1], [, 1], [1], [1, 1, 1]],
+  "0": [
+    [, 1],
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [, 1],
+  ],
+  "1": [
+    [, 1],
+    [1, 1],
+    [, 1],
+    [, 1],
+    [1, 1, 1],
+  ],
+  "2": [
+    [, 1],
+    [1, , 1],
+    [, , 1],
+    [, 1],
+    [1, 1, 1],
+  ],
+  "3": [
+    [1, 1],
+    [, , 1],
+    [, 1, 1],
+    [, , 1],
+    [1, 1],
+  ],
+  "4": [
+    [1, , 1],
+    [1, , 1],
+    [1, 1, 1],
+    [, , 1],
+    [, , 1],
+  ],
+  "5": [[1, 1, 1], [1], [1, 1], [, , 1], [1, 1]],
+  "6": [[, 1, 1], [1], [1, 1, 1], [1, , 1], [, 1]],
+  "7": [
+    [1, 1, 1],
+    [, , 1],
+    [, 1],
+    [, 1],
+    [, 1],
+  ],
+  "8": [
+    [, 1],
+    [1, , 1],
+    [, 1],
+    [1, , 1],
+    [, 1],
+  ],
+  "9": [
+    [, 1],
+    [1, , 1],
+    [, 1, 1],
+    [, , 1],
+    [, 1],
+  ],
+};
+
 const DEFAULT_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?";
 export interface TextInstance {
   setPosition: (x: number, y: number, z: number) => void;
@@ -124,7 +319,7 @@ export default class TextMaker {
   }
 
   generateTexture() {
-    const canvasSize = 1024; // You can adjust this for better resolution.
+    const canvasSize = 64; // You can adjust this for better resolution.
     const canvas = document.createElement("canvas");
     // document.body.appendChild(canvas);
     canvas.width = canvasSize;
@@ -132,26 +327,31 @@ export default class TextMaker {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error();
 
-    const size = { x: 90, y: 128 };
-    function drawStroked(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
-      ctx.font = `${size.y}px monospace`;
-      ctx["strokeStyle"] = "black";
-      ctx["lineWidth"] = 8;
-      ctx["lineJoin"] = "miter";
-      ctx["miterLimit"] = 2;
-      ctx.strokeText(text, x, y - 10);
-      ctx.fillStyle = "white";
-      ctx.fillText(text, x, y - 10);
+    const size = { x: 8, y: 8 };
+    function draw(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
+      // Use the letters array to draw the text atlas. Truthy value is a filled pixel.
+      const letter = letters[text as keyof typeof letters];
+      if (!letter) return;
+      for (let i = 0; i < letter.length; i++) {
+        for (let j = 0; j < letter[i].length; j++) {
+          if (letter[i][j]) {
+            // White pixel
+            ctx.fillStyle = "white";
+            ctx.fillRect(x + j, y + i, 1, 1);
+          }
+        }
+      }
     }
 
     ctx.textAlign = "center";
     for (let i = 0; i < this._characters.length; i++) {
-      const x = size.x * (i % 8) + size.x / 2;
-      const y = size.y * Math.floor(i / 8) + size.y;
-      drawStroked(ctx, this._characters[i], x, y);
+      const x = size.x * (i % 8) + 1;
+      const y = size.y * Math.floor(i / 8) + 1;
+      draw(ctx, this._characters[i], x, y);
     }
 
     const t = new THREE.CanvasTexture(canvas);
+    t.magFilter = THREE.NearestFilter;
     return t;
   }
 
@@ -167,7 +367,7 @@ export default class TextMaker {
     this._lengthsBuffer.needsUpdate = true;
     // Update scales
     const s = this._scales[instanceId] || 1;
-    this.setScale(instanceId, (message.length * s) / 10 / (128 / 90), s, 1);
+    this.setScale(instanceId, (message.length * s) / 10 / (6 / 6), s, 1);
     // Mark the texture for update on the next render
     this._messagesTexture.needsUpdate = true;
     (this.instancedMesh.material as THREE.ShaderMaterial).uniforms.time.value =

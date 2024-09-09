@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Interactive Dandelion</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #instructions { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial, sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="instructions">Blow into your microphone to scatter the dandelion seeds!</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer;
+        let seeds = [];
+        let stem;
+        let mic;
+        let analyser;
+        let blowingThreshold = 50;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            camera.position.z = 50;
+
+            // Create stem
+            const stemGeometry = new THREE.CylinderGeometry(0.1, 0.1, 20, 32);
+            const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
+            stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            stem.position.y = -10;
+            scene.add(stem);
+
+            // Create seeds
+            const seedGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const seedMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+            for (let i = 0; i < 200; i++) {
+                const seed = new THREE.Mesh(seedGeometry, seedMaterial);
+                seed.position.set(
+                    Math.random() * 10 - 5,
+                    Math.random() * 10 - 5,
+                    Math.random() * 10 - 5
+                );
+                seed.userData = {
+                    velocity: new THREE.Vector3(),
+                    isFlying: false
+                };
+                seeds.push(seed);
+                scene.add(seed);
+            }
+
+            // Set up audio input
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(function(stream) {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    mic = audioContext.createMediaStreamSource(stream);
+                    mic.connect(analyser);
+                    analyser.fftSize = 32;
+                })
+                .catch(function(err) {
+                    console.error('Microphone access denied:', err);
+                });
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (analyser) {
+                const dataArray = new Uint8Array(analyser.fftSize);
+                analyser.getByteTimeDomainData(dataArray);
+                const volume = Math.max(...dataArray) - 128;
+                
+                if (volume > blowingThreshold) {
+                    seeds.forEach(seed => {
+                        seed.userData.isFlying = true;
+                    });
+                }
+            }
+
+            seeds.forEach(seed => {
+                if (seed.userData.isFlying) {
+                    seed.userData.velocity.add(new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.01,
+                        (Math.random() - 0.5) * 0.01,
+                        (Math.random() - 0.5) * 0.01
+                    ));
+                    seed.position.add(seed.userData.velocity);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>

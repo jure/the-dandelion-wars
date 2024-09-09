@@ -173,7 +173,7 @@ module.exports = function (webpackEnv) {
   };
 
   return {
-    target: ["browserslist"],
+    target: "web",
     // Webpack noise constrained to errors and warnings
     stats: "errors-warnings",
     mode: isEnvProduction ? "production" : isEnvDevelopment && "development",
@@ -207,6 +207,12 @@ module.exports = function (webpackEnv) {
         ? (info) => path.relative(paths.appSrc, info.absoluteResourcePath).replace(/\\/g, "/")
         : isEnvDevelopment &&
           ((info) => path.resolve(info.absoluteResourcePath).replace(/\\/g, "/")),
+    },
+    experiments: {
+      outputModule: true,
+    },
+    externals: {
+      three: "module three",
     },
     cache: {
       type: "filesystem",
@@ -528,6 +534,7 @@ module.exports = function (webpackEnv) {
           {
             inject: "body",
             template: paths.appHtml,
+            scriptLoading: "module",
           },
           isEnvProduction
             ? {

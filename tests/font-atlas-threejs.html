@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Atlas Rendering in Three.js</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Create a canvas to generate the font atlas
+        const atlasCanvas = document.createElement('canvas');
+        const atlasCtx = atlasCanvas.getContext('2d');
+        atlasCanvas.width = 256;
+        atlasCanvas.height = 256;
+
+        // Generate the font atlas
+        function generateFontAtlas() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';
+            const fontSize = 32;
+            const charsPerRow = 8;
+            const pixelSize = 1;  // Pixelization factor
+
+            atlasCtx.fillStyle = 'black';
+            atlasCtx.fillRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+            atlasCtx.font = `${fontSize}px monospace`;
+            atlasCtx.fillStyle = 'white';
+            atlasCtx.textBaseline = 'top';
+
+            for (let i = 0; i < chars.length; i++) {
+                const x = (i % charsPerRow) * (atlasCanvas.width / charsPerRow);
+                const y = Math.floor(i / charsPerRow) * (atlasCanvas.height / (chars.length / charsPerRow));
+                atlasCtx.fillText(chars[i], x, y);
+            }
+
+            // Apply pixelization effect
+            const imageData = atlasCtx.getImageData(0, 0, atlasCanvas.width, atlasCanvas.height);
+            for (let y = 0; y < atlasCanvas.height; y += pixelSize) {
+                for (let x = 0; x < atlasCanvas.width; x += pixelSize) {
+                    const i = (y * atlasCanvas.width + x) * 4;
+                    const r = imageData.data[i];
+                    const g = imageData.data[i + 1];
+                    const b = imageData.data[i + 2];
+                    for (let py = 0; py < pixelSize; py++) {
+                        for (let px = 0; px < pixelSize; px++) {
+                            const pixelIndex = ((y + py) * atlasCanvas.width + (x + px)) * 4;
+                            imageData.data[pixelIndex] = r;
+                            imageData.data[pixelIndex + 1] = g;
+                            imageData.data[pixelIndex + 2] = b;
+                        }
+                    }
+                }
+            }
+            atlasCtx.putImageData(imageData, 0, 0);
+        }
+
+        generateFontAtlas();
+
+        // Set up Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create a texture from the atlas canvas
+        const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+        atlasTexture.minFilter = THREE.NearestFilter;
+        atlasTexture.magFilter = THREE.NearestFilter;
+
+        // Custom shader for rendering text
+        const vertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform sampler2D atlas;
+            uniform vec2 atlasSize;
+            uniform vec2 textureSize;
+            uniform float charSize;
+            uniform vec3 textColor;
+            varying vec2 vUv;
+
+            void main() {
+                vec2 charUV = fract(vUv * textureSize);
+                vec2 charIndex = floor(vUv * textureSize);
+                
+                float charCode = texture2D(atlas, (charIndex + vec2(0.5)) / textureSize).r * 255.0;
+                
+                vec2 atlasCharPos = vec2(
+                    mod(charCode, 8.0),
+                    floor(charCode / 8.0)
+                );
+                
+                vec2 atlasUV = (atlasCharPos * charSize + charUV * charSize) / atlasSize;
+                
+                float alpha = texture2D(atlas, atlasUV).r;
+                gl_FragColor = vec4(textColor, alpha);
+            }
+        `;
+
+        // Create a plane with the custom shader
+        const geometry = new THREE.PlaneGeometry(2, 1);
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                atlas: { value: atlasTexture },
+                atlasSize: { value: new THREE.Vector2(256, 256) },
+                textureSize: { value: new THREE.Vector2(16, 4) },  // 16x4 characters
+                charSize: { value: 32.0 },  // Size of each character in the atlas
+                textColor: { value: new THREE.Color(1, 1, 1) }
+            },
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            transparent: true
+        });
+
+        const plane = new THREE.Mesh(geometry, material);
+        scene.add(plane);
+
+        camera.position.z = 2;
+
+        // Function to update text
+        function updateText(text) {
+            const textureData = new Uint8Array(16 * 4);
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';
+            for (let i = 0; i < text.length; i++) {
+                const charIndex = chars.indexOf(text[i].toUpperCase());
+                textureData[i] = charIndex;
+            }
+            const texture = new THREE.DataTexture(textureData, 16, 4, THREE.RedFormat);
+            texture.needsUpdate = true;
+            plane.material.uniforms.atlas.value = texture;
+        }
+
+        updateText('HELLO WORLD');
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            plane.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

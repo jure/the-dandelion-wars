@@ -1,5 +1,5 @@
   @nomangle resolution tP tV
-  #define delta (1.0/60.0)
+  #define delta (2.0/60.0)
 
   void main() {
     vec2 uv = gl_FragCoord.xy / resolution.xy;
