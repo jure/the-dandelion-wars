@@ -72,9 +72,9 @@
 
           if ( compareFloats(ourType, 0.6) && compareFloats(theirType, 0.6)) {
             // Ship interactions (all avoid each other)
-            float nearField = (-0.05) / (distanceSq * distanceSq); // distance to the 4th power
+            float nearField = (-10.1) / (distanceSq); // distance to the 4th power
             
-            // acceleration += nearField * normalize( dPos );
+            acceleration += nearField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
             // Ships are attracted to the destination
             // Gravity towards destination
@@ -85,10 +85,10 @@
             acceleration += gravityField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(theirType, 0.1)) { 
             // Ships are repelled by other castles too, but only when they are close
-            float repulsionField = -0.5*gravityConstant * mass2 / (distanceSq*distanceSq*distanceSq);
+            float repulsionField = -0.5*gravityConstant * mass2 / (distanceSq*distanceSq);
             //repulsionField = min( repulsionField, 2. );
 
-            // acceleration += repulsionField * normalize( dPos );
+            acceleration += repulsionField * normalize( dPos );
           }
         }
       }
@@ -96,7 +96,7 @@
       // Dynamics
       vel += delta * acceleration;
       if(length(vel) > 0.) {
-        vel = normalize( vel ) * min( length( vel ), 1.0 * (d+1.));
+        vel = normalize( vel ) * min( length( vel ), 1.0 * (3.0+1.));
       }
     } else {
       // Dead particle, reset it

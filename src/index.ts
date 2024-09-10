@@ -16,25 +16,27 @@ import { createGrass } from "./grass";
 // import Stats from "three/addons/libs/stats.module.js";
 // let drawCallPanel: Stats.Panel;
 const intersectedPlace: CustomGroup | null = null; // The sphere currently being pointed at
-let startPlace: CustomGroup | null = null; // The first sphere selected when drawing a line
-let endPlace: CustomGroup | null = null; // The second sphere selected when drawing a line
+// let startPlace: CustomGroup | null = null; // The first sphere selected when drawing a line
+// let endPlace: CustomGroup | null = null; // The second sphere selected when drawing a line
 const controllers: THREE.Group[] = [];
 let lastGenerationTime: number;
 const WIDTH = 64;
 const PARTICLES = WIDTH * WIDTH;
 let knightUniforms: any;
 let places: THREE.Object3D[] = [];
-const placeSpheres: THREE.Object3D[] = []; // Spheres for easier raycasting
+// const placeSpheres: THREE.Object3D[] = []; // Spheres for easier raycasting
 let renderer: THREE.WebGLRenderer;
 let gpuCompute: GPUComputationRenderer;
 let velocityVariable: Variable;
 let positionVariable: any;
 let aggregateVariable: any;
 let textMaker: TextMaker;
-let isDragging = false;
+// let isDragging = false;
 let gameStarted = false;
 let currentTime = 0;
 let rotator: THREE.Object3D;
+const v1 = new THREE.Vector3();
+const v2 = new THREE.Vector3();
 const dtAggregateBuffer = new Float32Array(PARTICLES * 4);
 const dtVelocityBuffer = new Float32Array(PARTICLES * 4);
 const dtPositionBuffer = new Float32Array(PARTICLES * 4);
@@ -166,7 +168,7 @@ const init = async () => {
 
   // Create a camera
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 200);
-  camera.position.set(0, 1.8, -10);
+  camera.position.set(0, 7.0, -10);
 
   // Set up audio input
   navigator.mediaDevices
@@ -309,7 +311,7 @@ const init = async () => {
   // const light = new PointLight(0xffffff, 10, 100);
   // light.position.set(0, 0, 0);
   // scene.add(light);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.3);
   directionalLight.position.set(0, 1, 1);
   // directionalLight.castShadow = true;
   scene.add(directionalLight);
@@ -368,10 +370,10 @@ const init = async () => {
     const dandelionGroup = new THREE.Group();
 
     // Create the stem
-    const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 2, 3);
+    const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 3);
     const stemMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
     const stem = new THREE.Mesh(stemGeometry, stemMaterial);
-    stem.position.y = -1.0;
+    stem.position.y = -0.5;
     dandelionGroup.add(stem);
 
     // Create the flower head, using a lathe geometry
@@ -391,10 +393,9 @@ const init = async () => {
     const seedsMaterial = new THREE.MeshPhongMaterial({
       color: 0xffffff,
       side: THREE.DoubleSide,
-      emissive: 0xaaaaaa,
       // wireframe: true,
     });
-    const rand = 6; // Math.ceil(Math.random() * 30) + 1;
+    const rand = Math.ceil(Math.random() * 30) + 1;
     dandelionGroup.userData.seeds = rand;
 
     // Add a debug seed with normal mesh
@@ -413,7 +414,7 @@ const init = async () => {
     //   .add(flowerHead.position)
     //   .add(new THREE.Vector3(0, 0.1, 0));
     seedPositions.forEach((position, index) => {
-      dummy.position.copy(position); // .add(realCenter);
+      dummy.position.copy(position).add(new THREE.Vector3(0, 0.1, 0));
       // Calculate direction from origin to seed position
       const direction = position.clone().normalize();
 
@@ -424,16 +425,14 @@ const init = async () => {
       );
 
       dummy.setRotationFromQuaternion(quaternion);
-
       dummy.updateMatrix();
-
       instancedSeeds.setMatrixAt(index, dummy.matrix);
     });
 
     instancedSeeds.instanceMatrix.needsUpdate = true;
     dandelionGroup.userData.instancedSeeds = instancedSeeds;
     // Add invisible sphere for raycasting
-    const capsuleGeometry = new THREE.CapsuleGeometry(0.5, 1.5, 16, 16);
+    const capsuleGeometry = new THREE.CapsuleGeometry(0.5, 0.6, 16, 16);
     const capsuleMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       visible: false,
@@ -441,7 +440,7 @@ const init = async () => {
       opacity: 0.5,
     });
     const capsule = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
-    capsule.position.y = -0.5;
+    capsule.position.y = -0.25;
     dandelionGroup.add(capsule);
 
     // Scale the dandelion
@@ -469,7 +468,7 @@ const init = async () => {
       const dandelion = createDandelion();
       const x = Math.random() * 2 * radius - radius;
       const z = Math.random() * 2 * radius - radius;
-      const y = getTerrainHeight(x, z) + 2.0;
+      const y = getTerrainHeight(x, z) + 1.0;
       dandelion.position.set(x, y, z);
       console.log("dandelion", dandelion.position);
       dandelions.push(dandelion);
@@ -597,37 +596,37 @@ const init = async () => {
     }
   }
 
-  function handleClickOrTriggerEnd(
-    intersects: THREE.Intersection[],
-    event?: MouseEvent | TouchEvent,
-  ) {
-    if (intersects.length > 0) {
-      endPlace = places[placeSpheres.indexOf(intersects[0].object)] as CustomGroup;
-      if (startPlace && endPlace !== startPlace) {
-        console.log("startPlace attacks:", startPlace, "endPlace", endPlace);
-        // sendFleetFromPlaceToPlace(startPlace, endPlace);
-      }
-    }
-    controls.enabled = true;
-    // Reset
-    if (startPlace) {
-      setSelected(startPlace, false);
-      // setColorForAllChildren(startPlace, startPlace.u.color);
-    }
-    if (endPlace) {
-      setSelected(endPlace, false);
-      // setColorForAllChildren(endPlace, endPlace.u.color);
-    }
-    startPlace = null;
-    endPlace = null;
-    isDragging = false;
-    // line.visible = false;
-  }
+  // function handleClickOrTriggerEnd(
+  //   intersects: THREE.Intersection[],
+  //   event?: MouseEvent | TouchEvent,
+  // ) {
+  //   if (intersects.length > 0) {
+  //     endPlace = places[placeSpheres.indexOf(intersects[0].object)] as CustomGroup;
+  //     if (startPlace && endPlace !== startPlace) {
+  //       console.log("startPlace attacks:", startPlace, "endPlace", endPlace);
+  //       // sendFleetFromPlaceToPlace(startPlace, endPlace);
+  //     }
+  //   }
+  //   controls.enabled = true;
+  //   // Reset
+  //   if (startPlace) {
+  //     setSelected(startPlace, false);
+  //     // setColorForAllChildren(startPlace, startPlace.u.color);
+  //   }
+  //   if (endPlace) {
+  //     setSelected(endPlace, false);
+  //     // setColorForAllChildren(endPlace, endPlace.u.color);
+  //   }
+  //   startPlace = null;
+  //   endPlace = null;
+  //   isDragging = false;
+  //   // line.visible = false;
+  // }
 
-  function setSelected(place: CustomGroup, selected: boolean) {
-    console.log(place.id, "selected", selected);
-    place.u.shader.uniforms.selected.value = selected ? 1 : 0;
-  }
+  // function setSelected(place: CustomGroup, selected: boolean) {
+  //   console.log(place.id, "selected", selected);
+  //   place.u.shader.uniforms.selected.value = selected ? 1 : 0;
+  // }
 
   function addComputeCallback(name: string, callback: (buffer: Float32Array) => void) {
     if (!computeCallbacks[name]) {
@@ -777,7 +776,6 @@ const init = async () => {
 
       knightUniforms["tP"].value = tP;
       knightUniforms["tV"].value = tV;
-
       // updatePointing();
     }
     renderer.render(scene, camera);
@@ -803,7 +801,7 @@ const init = async () => {
   }
 
   function onPointerUp(event: PointerEvent) {
-    if (!isDragging) return;
+    // if (!isDragging) return;
 
     const position = getPointerPosition(event);
     mouse.x = (position.x / window.innerWidth) * 2 - 1;
@@ -812,7 +810,7 @@ const init = async () => {
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(dandelions);
 
-    handleClickOrTriggerEnd(intersects, event);
+    // handleClickOrTriggerEnd(intersects, event);
   }
 
   function pickUpDandelion(dandelion: THREE.Object3D, controllerIndex?: number) {
@@ -872,10 +870,10 @@ const init = async () => {
   }
 
   function onSelectEnd(i: number) {
-    console.log("select end", startPlace, intersectedPlace);
-    endPlace = intersectedPlace;
+    // console.log("select end", startPlace, intersectedPlace);
+    // endPlace = intersectedPlace;
     const intersects = intersectsFromController(i);
-    handleClickOrTriggerEnd(intersects);
+    // handleClickOrTriggerEnd(intersects);
 
     // controllerLock = null;
   }
@@ -1101,8 +1099,7 @@ const init = async () => {
         dummy.position.y,
         dummy.position.z,
       );
-      webglDirection.normalize().multiplyScalar(10.0);
-      // But
+      webglDirection.normalize().multiplyScalar(10);
       // dummyVec.multiplyScalar(0.1);
 
       thing.rot = webglDirection;
@@ -1122,9 +1119,13 @@ const init = async () => {
       // Find the target by taking the closest place in the
       // direction from the camera to the dandelion
       let tCamera = camera;
+
       if (renderer.xr.isPresenting) {
         tCamera = renderer.xr.getCamera() as THREE.PerspectiveCamera;
-        // text1?.updateText(tCamera.position.toArray().join(", "));
+        tCamera.getWorldPosition(v1);
+        // text1?.updateText(v1.toArray().join(", "));
+      } else {
+        tCamera.getWorldPosition(v1);
       }
       // Debug dummy
       // tCamera = new THREE.PerspectiveCamera();
@@ -1134,17 +1135,15 @@ const init = async () => {
       //   -2,
       // );
       // debugObject!.position.copy(tCamera.position);
-
-      const direction = new THREE.Vector3()
-        .subVectors(pickedUpDandelion.position, tCamera.position)
-        .normalize();
+      pickedUpDandelion.getWorldPosition(v2);
+      const direction = new THREE.Vector3().subVectors(v2, v1).normalize();
 
       // Add some randomness to the direction
       // direction.x += (Math.random() - 0.5) * 0.2;
       // direction.y += (Math.random() - 0.5) * 0.2;
       // direction.z += (Math.random() - 0.5) * 0.2;
 
-      const raycaster = new THREE.Raycaster(pickedUpDandelion.position, direction);
+      const raycaster = new THREE.Raycaster(v2, direction);
 
       let minDist = 1000;
       spheres.forEach((sphere) => {
@@ -1165,13 +1164,12 @@ const init = async () => {
           0,
         );
       });
-
       if (target) {
         (target as THREE.Mesh).userData.text.updateText("Target");
       }
 
-      direction.multiplyScalar(1000);
-      const vec = pickedUpDandelion.position.clone().add(direction);
+      // direction.multiplyScalar(1000);
+      // const vec = pickedUpDandelion.position.clone().add(direction);
 
       // debugLine.geometry["setFromPoints"]([pickedUpDandelion.position, vec]);
 
@@ -1192,8 +1190,10 @@ const init = async () => {
   // }
 
   function updateEnemyPositionsInTexture() {
+    // if (!unitLaunchInProgress) {
     const dtPosition = gpuCompute.createTexture();
     const positionCallback = (buffer: Float32Array) => {
+      // if (!unitLaunchInProgress) {
       // console.log("Position callback");
       dtPosition.image.data.set(buffer);
       const posArray = dtPosition.image.data;
@@ -1208,8 +1208,12 @@ const init = async () => {
       const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
       gpuCompute.renderTexture(dtPosition, rt);
       dtPosition.needsUpdate = true;
+      // } else {
+      //   console.log("Unit launch in progress");
+      // }
     };
     addComputeCallback("tP", positionCallback);
+    // }
   }
 
   function addUnitsWithPositionsToTexture(
@@ -1250,7 +1254,6 @@ const init = async () => {
       dtPosition.needsUpdate = true;
 
       const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
-      // gpuCompute.renderTexture(dtPosition, positionVariable.renderTargets[0]);
       gpuCompute.renderTexture(dtPosition, rt);
       dtVelocity.needsUpdate = true;
       const rtv = gpuCompute.getCurrentRenderTarget(velocityVariable);
