@@ -54,15 +54,15 @@ const blowingThreshold = 50;
 
 let selectedTarget: THREE.Mesh | null = null;
 
-const trees: CustomGroup[] = [];
+// const trees: CustomGroup[] = [];
 let spheres: THREE.Mesh[] = [];
 let grassInstances: THREE.InstancedMesh;
-const difficulty = 0;
-let controllerLock: null | number = null;
+// const difficulty = 0;
+// let controllerLock: null | number = null;
 let lastRotationTime = 0;
 const cameraDirection = new THREE.Vector3();
 
-const tempDandelieon: THREE.Object3D | null = null;
+// const tempDandelieon: THREE.Object3D | null = null;
 let pickedUpDandelion: THREE.Object3D | null = null;
 
 // let debugLine: THREE.Line;
@@ -152,6 +152,10 @@ const init = async () => {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x505050);
 
+  // Add axes helper
+  const axesHelper = new THREE.AxesHelper(5);
+  axesHelper.position.y = 1.0;
+  scene.add(axesHelper);
   // Add debug line
   // debugLine = new THREE.Line();
   // debugLine.geometry.setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
@@ -305,7 +309,7 @@ const init = async () => {
   // const light = new PointLight(0xffffff, 10, 100);
   // light.position.set(0, 0, 0);
   // scene.add(light);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.1);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
   directionalLight.position.set(0, 1, 1);
   // directionalLight.castShadow = true;
   scene.add(directionalLight);
@@ -356,6 +360,7 @@ const init = async () => {
     });
 
     const seedGeometry = new THREE.LatheGeometry(points, 4);
+    seedGeometry.computeVertexNormals();
     return seedGeometry;
   }
 
@@ -389,26 +394,39 @@ const init = async () => {
       emissive: 0xaaaaaa,
       // wireframe: true,
     });
-    const rand = Math.ceil(Math.random() * 30) + 1;
+    const rand = 6; // Math.ceil(Math.random() * 30) + 1;
     dandelionGroup.userData.seeds = rand;
+
+    // Add a debug seed with normal mesh
+    // const seed = new THREE.Mesh(seedGeometry, new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+    // seed.up = new THREE.Vector3(0, 0, 1);
+    // seed.lookAt(0, 0, 200);
+    // scene.add(seed);
     const instancedSeeds = new THREE.InstancedMesh(seedGeometry, seedsMaterial, rand);
     dandelionGroup.add(instancedSeeds);
 
     // Position and orient seeds
     const seedPositions = fibonacciSphere(rand, 0.2);
     const dummy = new THREE.Object3D();
-    const realCenter = new THREE.Vector3()
-      .add(flowerHead.position)
-      .add(new THREE.Vector3(0, 0.1, 0));
+
+    // const realCenter = new THREE.Vector3()
+    //   .add(flowerHead.position)
+    //   .add(new THREE.Vector3(0, 0.1, 0));
     seedPositions.forEach((position, index) => {
-      dummy.position.copy(position).add(realCenter);
-      const direction = new THREE.Vector3().subVectors(dummy.position, realCenter).normalize();
+      dummy.position.copy(position); // .add(realCenter);
+      // Calculate direction from origin to seed position
+      const direction = position.clone().normalize();
+
+      // Create a quaternion to rotate from (0, 1, 0) to the direction vector
       const quaternion = new THREE.Quaternion().setFromUnitVectors(
         new THREE.Vector3(0, 1, 0),
         direction,
       );
+
       dummy.setRotationFromQuaternion(quaternion);
+
       dummy.updateMatrix();
+
       instancedSeeds.setMatrixAt(index, dummy.matrix);
     });
 
@@ -850,7 +868,7 @@ const init = async () => {
       pickUpDandelion(intersects[0].object, i);
     }
 
-    controllerLock = i;
+    // controllerLock = i;
   }
 
   function onSelectEnd(i: number) {
@@ -859,7 +877,7 @@ const init = async () => {
     const intersects = intersectsFromController(i);
     handleClickOrTriggerEnd(intersects);
 
-    controllerLock = null;
+    // controllerLock = null;
   }
 
   async function startGame() {
@@ -949,13 +967,13 @@ const init = async () => {
 
   function initKnights() {
     const baseGeometry = createSeedGeometry();
-    baseGeometry.scale(0.3, 0.3, 0.3);
+    // baseGeometry.scale(0.3, 0.3, 0.3);
     baseGeometry["rotateX"](-Math.PI / 2);
     const instancedGeometry = new THREE.InstancedBufferGeometry();
     instancedGeometry["index"] = baseGeometry["index"];
     instancedGeometry.attributes.position = baseGeometry.attributes.position;
     instancedGeometry.attributes.uv = baseGeometry.attributes.uv;
-
+    instancedGeometry.attributes.normal = baseGeometry.attributes.normal;
     instancedGeometry["instanceCount"] = PARTICLES;
     const uvs = new Float32Array(PARTICLES * 2);
     let p = 0;
@@ -1017,7 +1035,7 @@ const init = async () => {
     spheres.forEach((sphere) => {
       // Update text
       const text = sphere.userData.text as TextInstance;
-      text.updateText(sphere.position.x.toFixed(2) + ", " + sphere.position.z.toFixed(2));
+      // text.updateText(sphere.position.x.toFixed(2) + ", " + sphere.position.z.toFixed(2));
       text.setPosition(sphere.position.x, sphere.position.y + 1, sphere.position.z);
 
       // Rise slowly
@@ -1067,17 +1085,27 @@ const init = async () => {
     for (let i = 0; i < dandelion.userData.seeds; i++) {
       dummy.parent = dandelion;
       dandelion.userData.instancedSeeds.getMatrixAt(i, dummyMat4);
-      dummy.position.setFromMatrixPosition(dummyMat4);
-      dummy.updateMatrixWorld();
+      dummy.matrix.copy(dummyMat4);
+      dummy.matrixAutoUpdate = false;
+      // dummy.updateMatrixWorld(true);
       dummy.getWorldPosition(dummyVec);
+      dummy.position.setFromMatrixPosition(dummy.matrix);
       const thing = {
         pos: dummyVec.clone(),
         rot: dummyVec, // temp
       };
       dummy.getWorldDirection(dummyVec);
-      dummyVec.multiplyScalar(0.1);
+      // const webglDirection = new THREE.Vector3(dummyVec.x, dummyVec.y, dummyVec.z);
+      const webglDirection = new THREE.Vector3(
+        dummy.position.x,
+        dummy.position.y,
+        dummy.position.z,
+      );
+      webglDirection.normalize().multiplyScalar(10.0);
+      // But
+      // dummyVec.multiplyScalar(0.1);
 
-      thing.rot = dummyVec.clone();
+      thing.rot = webglDirection;
       positions.push(thing);
     }
     addUnitsWithPositionsToTexture(positions, dandelion, target, "p");
@@ -1096,6 +1124,7 @@ const init = async () => {
       let tCamera = camera;
       if (renderer.xr.isPresenting) {
         tCamera = renderer.xr.getCamera() as THREE.PerspectiveCamera;
+        // text1?.updateText(tCamera.position.toArray().join(", "));
       }
       // Debug dummy
       // tCamera = new THREE.PerspectiveCamera();
@@ -1123,6 +1152,9 @@ const init = async () => {
         const distance = raycaster.ray.distanceToPoint(sphere.position);
         const normalizedDistance = Math.min(distance / 15, 1); // Normalize to [0, 1]
 
+        const text = sphere.userData.text as TextInstance;
+        text.updateText(distance.toFixed(2));
+
         if (distance < minDist) {
           minDist = distance;
           target = sphere;
@@ -1133,6 +1165,10 @@ const init = async () => {
           0,
         );
       });
+
+      if (target) {
+        (target as THREE.Mesh).userData.text.updateText("Target");
+      }
 
       direction.multiplyScalar(1000);
       const vec = pickedUpDandelion.position.clone().add(direction);
@@ -1194,16 +1230,6 @@ const init = async () => {
       // console.log("Position callback");
       dtPosition.image.data.set(buffer);
       const posArray = dtPosition.image.data;
-
-      // Update the first row of the data texture with new enemy positions
-      // for (let i = 0; i < WIDTH && places[i]; i++) {
-      //   const index = i * 4;
-      //   posArray[index] = places[i].position.x;
-      //   posArray[index + 1] = places[i].position.y;
-      //   posArray[index + 2] = places[i].position.z;
-      //   console.log("Syncing castle", places[i].position);
-      //   posArray[index + 3] = 0.1; // enemy flying "castle"
-      // }
 
       for (let i = 0; i < slots.length; i++) {
         const index = slots[i];
@@ -1280,102 +1306,6 @@ const init = async () => {
 
     addComputeCallback("tV", velocityCallback);
   }
-
-  // function addUnitsToTexture(
-  //   numberOfShips: number,
-  //   startPlace: THREE.Object3D,
-  //   endPlace: THREE.Object3D,
-  //   owner: "p" | "e",
-  // ) {
-  //   const targetId = places.indexOf(endPlace);
-  //   const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
-
-  //   const dtPosition = gpuCompute.createTexture();
-  //   const dtVelocity = gpuCompute.createTexture();
-  //   const source = startPlace.position;
-  //   let slotsFound = 0;
-  //   const slots: number[] = [];
-  //   const positionCallback = (buffer: Float32Array) => {
-  //     // console.log("Position callback");
-  //     dtPosition.image.data.set(buffer);
-  //     const posArray = dtPosition.image.data;
-
-  //     for (let i = 0; i < slots.length; i++) {
-  //       const index = slots[i];
-  //       if (owner === "p") {
-  //         posArray[index] = source.x + (Math.random() - 0.5) * 0.1;
-  //         posArray[index + 1] = source.y - (Math.random() - 0.5) * 0.1;
-  //         posArray[index + 2] = source.z + (Math.random() - 0.5) * 0.1;
-  //         posArray[index + 3] = 0.6; // ship type
-  //       } else {
-  //         posArray[index] = source.x + (Math.random() - 0.5) * 0.01;
-  //         posArray[index + 1] = source.y + Math.random() * 0.5;
-  //         posArray[index + 2] = source.z + (Math.random() - 0.5) * 0.01;
-  //         posArray[index + 3] = 0.601; // ship type
-  //       }
-  //     }
-  //     removeComputeCallback("tP", positionCallback);
-  //     dtPosition.needsUpdate = true;
-
-  //     const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
-  //     // gpuCompute.renderTexture(dtPosition, positionVariable.renderTargets[0]);
-  //     gpuCompute.renderTexture(dtPosition, rt);
-  //     dtVelocity.needsUpdate = true;
-  //     const rtv = gpuCompute.getCurrentRenderTarget(velocityVariable);
-  //     gpuCompute.renderTexture(dtVelocity, rtv);
-
-  //     console.log(
-  //       "Added units",
-  //       slots.length,
-  //       "to",
-  //       targetId,
-  //       "from",
-  //       source,
-  //       endPlace.position,
-  //       `(${dtTarget})`,
-  //       "for",
-  //       owner,
-  //     );
-  //     // startPlace.u.troops -= slots.length / 2;
-  //     slots.length = 0;
-  //     unitLaunchInProgress = false;
-  //   };
-
-  //   const velocityCallback = (buffer: Float32Array) => {
-  //     unitLaunchInProgress = true;
-  //     // console.log("Velocity callback");
-  //     dtVelocity.image.data.set(buffer);
-  //     const velArray = dtVelocity.image.data;
-  //     for (let i = 0; i < velArray.length; i += 4) {
-  //       // Only allow 1/2 of total units per p
-  //       if (unitsFound[owner] + slotsFound >= PARTICLES / 2 - 64) {
-  //         break;
-  //       }
-  //       // Check if the slot is empty
-  //       if (velArray[i + 3] === 0) {
-  //         // Update the slot
-  //         velArray[i] = 0.0;
-  //         velArray[i + 1] = 0.0;
-  //         velArray[i + 2] = 0.0;
-  //         velArray[i + 3] = dtTarget; // target castle id
-  //         slotsFound++;
-  //         slots.push(i);
-  //       }
-  //       if (slotsFound > numberOfShips - 1) {
-  //         break;
-  //       }
-  //     }
-  //     if (slotsFound < Math.floor(numberOfShips)) {
-  //       console.warn(
-  //         `Only ${slotsFound} slots were found and updated. Requested ${numberOfShips}.`,
-  //       );
-  //     }
-  //     removeComputeCallback("tV", velocityCallback);
-  //     addComputeCallback("tP", positionCallback);
-  //   };
-
-  //   addComputeCallback("tV", velocityCallback);
-  // }
 };
 
 init();

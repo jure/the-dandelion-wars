@@ -37,9 +37,6 @@
           float mass2 = velTemp2.w;
 
           float idParticle2 = secondParticleCoords.y * resolution.x + secondParticleCoords.x;
-
-        //   gl_FragColor = vec4(secondParticleCoords, resolution.x,idParticle);
-        //   return; 
           
           if ( idParticle == idParticle2 ) {
             continue;
@@ -77,7 +74,7 @@
             // Ship interactions (all avoid each other)
             float nearField = (-0.05) / (distanceSq * distanceSq); // distance to the 4th power
             
-            acceleration += nearField * normalize( dPos );
+            // acceleration += nearField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
             // Ships are attracted to the destination
             // Gravity towards destination
@@ -91,7 +88,7 @@
             float repulsionField = -0.5*gravityConstant * mass2 / (distanceSq*distanceSq*distanceSq);
             //repulsionField = min( repulsionField, 2. );
 
-            acceleration += repulsionField * normalize( dPos );
+            // acceleration += repulsionField * normalize( dPos );
           }
         }
       }
@@ -103,11 +100,11 @@
       }
     } else {
       // Dead particle, reset it
-      gl_FragColor = vec4( 0 );
+      gl_FragColor = vec4(0);
       return;
     }
 
-    gl_FragColor = vec4( vel, mass );
+    gl_FragColor = vec4(vel, mass);
 
   }
 
