@@ -6,13 +6,12 @@ export function createGrass(grassCount: number, terrainSize: number) {
   const grassMaterial = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader: `
-                    varying vec2 vUv;
-
-                    void main() {
-                        vec3 grassColor = mix(vec3(0.1, 0.6, 0.1), vec3(0.8, 1.0, 0.2), vUv.y);
-                        gl_FragColor = vec4(grassColor, 1.0);
-                    }
-                `,
+varying vec2 vUv;
+void main() { 
+    vec3 gc = mix(vec3(0.1, 0.6, 0.1), vec3(0.8, 1.0, 0.2), vUv.y);
+    gl_FragColor = vec4(gc, 1.0);
+}
+    `,
     side: THREE.DoubleSide,
     uniforms: {
       time: { value: 0 },
