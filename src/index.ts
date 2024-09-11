@@ -281,7 +281,7 @@ const init = async () => {
   const gradMesh = new THREE.Mesh(gradGeometry, gradMaterial);
   scene.add(gradMesh);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
   directionalLight.position.set(0, 1, 1);
   scene.add(directionalLight);
   const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
@@ -323,7 +323,7 @@ const init = async () => {
     points.push(new THREE.Vector2(0.1, 0));
     points.push(new THREE.Vector2(0.05, 0.2)); // Top of the seed
     points.push(new THREE.Vector2(0.05, 0.6)); // Tip of the seed
-    points.push(new THREE.Vector2(0.5, 0.7)); // Top of the tuft
+    points.push(new THREE.Vector2(0.2, 0.7)); // Top of the tuft
 
     // Scale points
     points.forEach((point) => {
@@ -1282,30 +1282,41 @@ const init = async () => {
       // console.log("Velocity callback");
       dtVelocity.image.data.set(buffer);
       const velArray: Uint8ClampedArray = dtVelocity.image.data;
+      const livingTargets = targets.filter((t) => t !== null);
+      const randomTarget = livingTargets[Math.floor(Math.random() * livingTargets.length)];
+      const randomTargetIndex = targets.indexOf(randomTarget);
       for (let i = 0; i < velArray.length; i += 4) {
         const unit = unitQueue[slotsFound];
-        if (!unit) {
-          break;
+
+        if (unit && slotsFound < unitQueue.length + 1) {
+          const targetId = targets.indexOf(unit.target);
+          const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
+
+          // // Only allow 1/2 of total units per p
+          // if (unitsFound[unit.owner] + slotsFound >= PARTICLES / 2 - 64) {
+          //   break;
+          // }
+          // Check if the slot is empty
+          if (velArray[i + 3] === 0) {
+            // this is 1.0 or mass for non-units
+            // Update the slot
+            velArray[i] = unit.rot.x;
+            velArray[i + 1] = unit.rot.y;
+            velArray[i + 2] = unit.rot.z;
+            velArray[i + 3] = dtTarget; // target castle id
+            slotsFound++;
+            slots.push(i);
+          }
+          // if (slotsFound > unitQueue.length - 1) {
+          //   break;
+          // }
         }
-        const targetId = targets.indexOf(unit.target);
-        const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
-        // Only allow 1/2 of total units per p
-        if (unitsFound[unit.owner] + slotsFound >= PARTICLES / 2 - 64) {
-          break;
-        }
-        // Check if the slot is empty
-        if (velArray[i + 3] === 0) {
-          // this is 1.0 or mass for non-units
-          // Update the slot
-          velArray[i] = unit.rot.x;
-          velArray[i + 1] = unit.rot.y;
-          velArray[i + 2] = unit.rot.z;
-          velArray[i + 3] = dtTarget; // target castle id
-          slotsFound++;
-          slots.push(i);
-        }
-        if (slotsFound > unitQueue.length - 1) {
-          break;
+        // See if units are without target
+        const dtTarget = velArray[i + 3];
+        const targetId = Math.floor((dtTarget - 0.5) * WIDTH);
+        if (dtTarget > 0 && !targets[targetId]) {
+          // redirect to another random target
+          velArray[i + 3] = (randomTargetIndex + 0.5) / WIDTH + 0.5;
         }
       }
 
@@ -1324,132 +1335,6 @@ const init = async () => {
       addComputeCallback("tV", velocityCallback);
     }
   }
-
-  // function updateEnemyPositionsInTexture() {
-  //   if (syncInProgress) {
-  //     console.log("Unit launch in progress");
-  //     return;
-  //   }
-  //   const dtPosition = gpuCompute.createTexture();
-  //   const positionCallback = (buffer: Float32Array) => {
-  //     if (!syncInProgress) {
-  //       console.log("Position callback");
-  //       dtPosition.image.data.set(buffer);
-  //       const posArray = dtPosition.image.data;
-  //       for (let i = 0; i < targets.length; i++) {
-  //         if (targets[i] === null) continue;
-  //         const index = i * 4;
-  //         posArray[index] = targets[i]!.position.x;
-  //         posArray[index + 1] = targets[i]!.position.y;
-  //         posArray[index + 2] = targets[i]!.position.z;
-  //         posArray[index + 3] = 0.1; // enemy flying "castle"
-  //       }
-  //       const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
-  //       gpuCompute.renderTexture(dtPosition, rt);
-  //       dtPosition.needsUpdate = true;
-  //     } else {
-  //       console.log("Unit launch in progress");
-  //     }
-  //     removeComputeCallback("tP", positionCallback);
-  //   };
-  //   addComputeCallback("tP", positionCallback);
-  //   // }
-  // }
-
-  // function addUnitsWithPositionsToTexture(
-  //   units: Unit[],
-  //   startPlace: THREE.Object3D,
-  //   endPlace: THREE.Mesh,
-  //   owner: "p" | "e",
-  // ) {
-  //   const targetId = targets.indexOf(endPlace);
-  //   const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
-
-  //   const dtPosition = gpuCompute.createTexture();
-  //   const dtVelocity = gpuCompute.createTexture();
-  //   const source = startPlace.position;
-  //   let slotsFound = 0;
-  //   const slots: number[] = [];
-  //   const positionCallback = (buffer: Float32Array) => {
-  //     // console.log("Position callback");
-  //     dtPosition.image.data.set(buffer);
-  //     const posArray = dtPosition.image.data;
-
-  //     for (let i = 0; i < slots.length; i++) {
-  //       const index = slots[i];
-  //       // console.log("Adding unit", units[i].pos);
-  //       if (owner === "p") {
-  //         posArray[index] = units[i].pos.x;
-  //         posArray[index + 1] = units[i].pos.y;
-  //         posArray[index + 2] = units[i].pos.z;
-  //         posArray[index + 3] = 0.6; // ship type
-  //       } else {
-  //         posArray[index] = units[i].pos.x;
-  //         posArray[index + 1] = units[i].pos.y;
-  //         posArray[index + 2] = units[i].pos.z;
-  //         posArray[index + 3] = 0.601; // ship type
-  //       }
-  //     }
-  //     removeComputeCallback("tP", positionCallback);
-  //     dtPosition.needsUpdate = true;
-
-  //     const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
-  //     gpuCompute.renderTexture(dtPosition, rt);
-  //     dtVelocity.needsUpdate = true;
-  //     const rtv = gpuCompute.getCurrentRenderTarget(velocityVariable);
-  //     gpuCompute.renderTexture(dtVelocity, rtv);
-
-  //     console.log(
-  //       "Added units",
-  //       slots.length,
-  //       "to",
-  //       targetId,
-  //       "from",
-  //       source,
-  //       endPlace.position,
-  //       `(${dtTarget})`,
-  //       "for",
-  //       owner,
-  //     );
-  //     // startPlace.u.troops -= slots.length / 2;
-  //     slots.length = 0;
-  //     syncInProgress = false;
-  //   };
-
-  //   const velocityCallback = (buffer: Float32Array) => {
-  //     syncInProgress = true;
-  //     // console.log("Velocity callback");
-  //     dtVelocity.image.data.set(buffer);
-  //     const velArray = dtVelocity.image.data;
-  //     for (let i = 0; i < velArray.length; i += 4) {
-  //       // Only allow 1/2 of total units per p
-  //       if (unitsFound[owner] + slotsFound >= PARTICLES / 2 - 64) {
-  //         break;
-  //       }
-  //       // Check if the slot is empty
-  //       if (velArray[i + 3] === 0) {
-  //         // this is 1.0 or mass for non-units
-  //         // Update the slot
-  //         velArray[i] = units[slotsFound].rot.x;
-  //         velArray[i + 1] = units[slotsFound].rot.y;
-  //         velArray[i + 2] = units[slotsFound].rot.z;
-  //         velArray[i + 3] = dtTarget; // target castle id
-  //         slotsFound++;
-  //         slots.push(i);
-  //       }
-  //       if (slotsFound > units.length - 1) {
-  //         break;
-  //       }
-  //     }
-  //     if (slotsFound < Math.floor(units.length)) {
-  //       console.warn(`Only ${slotsFound} slots were found and updated. Requested ${units.length}.`);
-  //     }
-  //     removeComputeCallback("tV", velocityCallback);
-  //     addComputeCallback("tP", positionCallback);
-  //   };
-
-  //   addComputeCallback("tV", velocityCallback);
-  // }
 };
 
 init();
