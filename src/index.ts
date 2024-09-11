@@ -12,6 +12,14 @@ import { playRandomSoundAtPosition } from "./sounds";
 import Music from "./music";
 import { createGrass } from "./grass";
 
+type Unit = {
+  pos: THREE.Vector3;
+  rot: THREE.Vector3;
+  start: THREE.Vector3;
+  target: THREE.Mesh;
+  owner: "p" | "e";
+};
+
 // P is player, E si enemy
 const controllers: THREE.Group[] = [];
 let lastGenerationTime: number;
@@ -30,6 +38,8 @@ let textMaker: TextMaker;
 let gameStarted = false;
 let currentTime = 0;
 let rotator: THREE.Object3D;
+const unitQueue: Unit[] = [];
+
 const v1 = new THREE.Vector3();
 const v2 = new THREE.Vector3();
 const dtAggregateBuffer = new Float32Array(PARTICLES * 4);
@@ -642,7 +652,8 @@ const init = async () => {
     handleControllers();
     if (gameStarted) {
       if (frame % 10 === 0) {
-        updateEnemyPositionsInTexture();
+        syncWithGPU();
+        // updateEnemyPositionsInTexture();
       }
       lastGenerationTime = lastGenerationTime || Date.now();
       gpuCompute.compute(computeCallbacks);
@@ -882,7 +893,8 @@ const init = async () => {
       Math.sin(angle) * radius,
     );
 
-    const text = textMaker.addText("OOOOOO", new THREE.Color(0xff0000), true, true);
+    const text = textMaker.addText("", new THREE.Color(0xff0000), true, true);
+    text?.setPosition(enemy.position.x, enemy.position.y + 1, enemy.position.z);
     text?.setScale(10.0);
     text?.updateText("OOOOOO");
     enemy.userData.text = text;
@@ -899,6 +911,15 @@ const init = async () => {
       console.log("No empty spots for enemy");
     }
   }
+
+  // function syncText(target: THREE.Mesh) {
+  //   const text = target.userData.text as TextInstance;
+  //   text.setPosition(target.position.x, target.position.y + 1, target.position.z);
+  //   if (target.userData.currentlyTargeted && pickedUpDandelion) {
+  //     text.updateText("Target");
+  //   } else if (pickedUpDandelion) {
+  //   }
+  // }
 
   function moveEnemies() {
     const enemies = targets.filter((t) => t && t.userData.type === "enemy") as THREE.Mesh[];
@@ -923,7 +944,7 @@ const init = async () => {
       const directionToCenter = new THREE.Vector3()
         .subVectors(new THREE.Vector3(0, sphere.position.y, 0), sphere.position)
         .normalize();
-      // sphere.position.add(directionToCenter.multiplyScalar(0.01));
+      sphere.position.add(directionToCenter.multiplyScalar(0.01));
 
       // Remove if too close to center
       if (new THREE.Vector2(sphere.position.x, sphere.position.z).length() < 0.5) {
@@ -946,14 +967,21 @@ const init = async () => {
   //   gpuCompute.renderTexture(dtVelocity, rtv);
   // }
 
-  type Unit = Record<string, THREE.Vector3>;
+  // Example
+  // const unit = {
+  //   pos: dummyVec.clone(),
+  //   rot: dummyVec, // temp
+  //   start: dandelion.position.clone(),
+  //   end: target,
+  //   owner: "p",
+  // };
 
   // This takes the number of seeds of a picked dandelion, and adds them to the data texture
   function blowDandelion(dandelion: THREE.Object3D, target: THREE.Mesh) {
     const dummy = new THREE.Object3D();
     const dummyVec = new THREE.Vector3();
     const dummyMat4 = new THREE.Matrix4();
-    const positions: Unit[] = [];
+    const units: Unit[] = [];
     for (let i = 0; i < dandelion.userData.seeds; i++) {
       dummy.parent = dandelion;
       dandelion.userData.instancedSeeds.getMatrixAt(i, dummyMat4);
@@ -962,9 +990,12 @@ const init = async () => {
       // dummy.updateMatrixWorld(true);
       dummy.getWorldPosition(dummyVec);
       dummy.position.setFromMatrixPosition(dummy.matrix);
-      const thing = {
+      const unit = {
         pos: dummyVec.clone(),
         rot: dummyVec, // temp
+        start: dandelion.position.clone(),
+        target,
+        owner: "p" as "p" | "e",
       };
       dummy.getWorldDirection(dummyVec);
       // const webglDirection = new THREE.Vector3(dummyVec.x, dummyVec.y, dummyVec.z);
@@ -976,15 +1007,24 @@ const init = async () => {
       webglDirection.normalize().multiplyScalar(10);
       // dummyVec.multiplyScalar(0.1);
 
-      thing.rot = webglDirection;
-      positions.push(thing);
+      unit.rot = webglDirection;
+      units.push(unit);
     }
-    addUnitsWithPositionsToTexture(positions, dandelion, target, "p");
+    unitQueue.push(...units);
+
+    // addUnitsWithPositionsToTexture(positions, dandelion, target, "p");
 
     // Move it somewhere far below
     dandelion.position.y = -100;
     dandelion.userData.instancedSeeds.count = 0;
     dandelion.userData.seeds = 0;
+    pickedUpDandelion = null;
+    syncLivesText(target);
+  }
+
+  function syncLivesText(target: THREE.Mesh) {
+    const text = target.userData.text as TextInstance;
+    text.updateText("O".repeat(Math.max(target.userData.lives, 0)));
   }
 
   function targeting() {
@@ -1009,13 +1049,12 @@ const init = async () => {
       let minDist = 1000;
       targets.forEach((targetCandidate) => {
         if (!targetCandidate) return;
+        targetCandidate.userData.currentTarget = false;
+        if (!targetCandidate) return;
         // enemies are enemy ships
         const distance = raycaster.ray.distanceToPoint(targetCandidate.position);
         const normalizedDistance = Math.min(distance / 15, 1); // Normalize to [0, 1]
-
-        // const text = targetCandidate.userData.text as TextInstance;
-        // text.updateText(distance.toFixed(2));
-
+        syncLivesText(targetCandidate);
         if (distance < minDist) {
           minDist = distance;
           target = targetCandidate;
@@ -1027,7 +1066,8 @@ const init = async () => {
         );
       });
       if (target) {
-        // (target as THREE.Mesh).userData.text.updateText("Target");
+        (target as THREE.Mesh).userData.currentTarget = true;
+        (target as THREE.Mesh).userData.text.updateText("Target");
       }
 
       if (target !== null) {
@@ -1037,68 +1077,44 @@ const init = async () => {
     return null;
   }
 
-  function updateEnemyPositionsInTexture() {
+  function syncWithGPU() {
     if (unitLaunchInProgress) {
       console.log("Unit launch in progress");
       return;
     }
-    const dtPosition = gpuCompute.createTexture();
-    const positionCallback = (buffer: Float32Array) => {
-      if (!unitLaunchInProgress) {
-        console.log("Position callback");
-        dtPosition.image.data.set(buffer);
-        const posArray = dtPosition.image.data;
-        for (let i = 0; i < targets.length; i++) {
-          if (targets[i] === null) continue;
-          const index = i * 4;
-          posArray[index] = targets[i]!.position.x;
-          posArray[index + 1] = targets[i]!.position.y;
-          posArray[index + 2] = targets[i]!.position.z;
-          posArray[index + 3] = 0.1; // enemy flying "castle"
-        }
-        const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
-        gpuCompute.renderTexture(dtPosition, rt);
-        dtPosition.needsUpdate = true;
-      } else {
-        console.log("Unit launch in progress");
-      }
-      removeComputeCallback("tP", positionCallback);
-    };
-    addComputeCallback("tP", positionCallback);
-    // }
-  }
-
-  function addUnitsWithPositionsToTexture(
-    units: Unit[],
-    startPlace: THREE.Object3D,
-    endPlace: THREE.Mesh,
-    owner: "p" | "e",
-  ) {
-    const targetId = targets.indexOf(endPlace);
-    const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
 
     const dtPosition = gpuCompute.createTexture();
     const dtVelocity = gpuCompute.createTexture();
-    const source = startPlace.position;
     let slotsFound = 0;
     const slots: number[] = [];
+
     const positionCallback = (buffer: Float32Array) => {
       // console.log("Position callback");
       dtPosition.image.data.set(buffer);
       const posArray = dtPosition.image.data;
 
+      for (let i = 0; i < targets.length; i++) {
+        if (targets[i] === null) continue;
+        const index = i * 4;
+        posArray[index] = targets[i]!.position.x;
+        posArray[index + 1] = targets[i]!.position.y;
+        posArray[index + 2] = targets[i]!.position.z;
+        posArray[index + 3] = 0.1; // enemy flying "castle"
+      }
+
       for (let i = 0; i < slots.length; i++) {
         const index = slots[i];
+        const unit = unitQueue[i];
         // console.log("Adding unit", units[i].pos);
-        if (owner === "p") {
-          posArray[index] = units[i].pos.x;
-          posArray[index + 1] = units[i].pos.y;
-          posArray[index + 2] = units[i].pos.z;
+        if (unit.owner === "p") {
+          posArray[index] = unit.pos.x;
+          posArray[index + 1] = unit.pos.y;
+          posArray[index + 2] = unit.pos.z;
           posArray[index + 3] = 0.6; // ship type
         } else {
-          posArray[index] = units[i].pos.x;
-          posArray[index + 1] = units[i].pos.y;
-          posArray[index + 2] = units[i].pos.z;
+          posArray[index] = unit.pos.x;
+          posArray[index + 1] = unit.pos.y;
+          posArray[index + 2] = unit.pos.z;
           posArray[index + 3] = 0.601; // ship type
         }
       }
@@ -1111,49 +1127,45 @@ const init = async () => {
       const rtv = gpuCompute.getCurrentRenderTarget(velocityVariable);
       gpuCompute.renderTexture(dtVelocity, rtv);
 
-      console.log(
-        "Added units",
-        slots.length,
-        "to",
-        targetId,
-        "from",
-        source,
-        endPlace.position,
-        `(${dtTarget})`,
-        "for",
-        owner,
-      );
       // startPlace.u.troops -= slots.length / 2;
       slots.length = 0;
       unitLaunchInProgress = false;
+      unitQueue.length = 0;
     };
 
     const velocityCallback = (buffer: Float32Array) => {
       unitLaunchInProgress = true;
       // console.log("Velocity callback");
       dtVelocity.image.data.set(buffer);
-      const velArray = dtVelocity.image.data;
+      const velArray: Uint8ClampedArray = dtVelocity.image.data;
       for (let i = 0; i < velArray.length; i += 4) {
+        const unit = unitQueue[slotsFound];
+        if (!unit) {
+          break;
+        }
+        const targetId = targets.indexOf(unit.target);
+        const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
         // Only allow 1/2 of total units per p
-        if (unitsFound[owner] + slotsFound >= PARTICLES / 2 - 64) {
+        if (unitsFound[unit.owner] + slotsFound >= PARTICLES / 2 - 64) {
           break;
         }
         // Check if the slot is empty
         if (velArray[i + 3] === 0) {
+          // this is 1.0 or mass for non-units
           // Update the slot
-          velArray[i] = units[slotsFound].rot.x;
-          velArray[i + 1] = units[slotsFound].rot.y;
-          velArray[i + 2] = units[slotsFound].rot.z;
+          velArray[i] = unit.rot.x;
+          velArray[i + 1] = unit.rot.y;
+          velArray[i + 2] = unit.rot.z;
           velArray[i + 3] = dtTarget; // target castle id
           slotsFound++;
           slots.push(i);
         }
-        if (slotsFound > units.length - 1) {
+        if (slotsFound > unitQueue.length - 1) {
           break;
         }
       }
-      if (slotsFound < Math.floor(units.length)) {
-        console.warn(`Only ${slotsFound} slots were found and updated. Requested ${units.length}.`);
+      if (slotsFound < Math.floor(unitQueue.length)) {
+        console.warn(`Only ${slotsFound} slots were found (needed ${unitQueue.length}).`);
       }
       removeComputeCallback("tV", velocityCallback);
       addComputeCallback("tP", positionCallback);
@@ -1161,6 +1173,132 @@ const init = async () => {
 
     addComputeCallback("tV", velocityCallback);
   }
+
+  // function updateEnemyPositionsInTexture() {
+  //   if (unitLaunchInProgress) {
+  //     console.log("Unit launch in progress");
+  //     return;
+  //   }
+  //   const dtPosition = gpuCompute.createTexture();
+  //   const positionCallback = (buffer: Float32Array) => {
+  //     if (!unitLaunchInProgress) {
+  //       console.log("Position callback");
+  //       dtPosition.image.data.set(buffer);
+  //       const posArray = dtPosition.image.data;
+  //       for (let i = 0; i < targets.length; i++) {
+  //         if (targets[i] === null) continue;
+  //         const index = i * 4;
+  //         posArray[index] = targets[i]!.position.x;
+  //         posArray[index + 1] = targets[i]!.position.y;
+  //         posArray[index + 2] = targets[i]!.position.z;
+  //         posArray[index + 3] = 0.1; // enemy flying "castle"
+  //       }
+  //       const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
+  //       gpuCompute.renderTexture(dtPosition, rt);
+  //       dtPosition.needsUpdate = true;
+  //     } else {
+  //       console.log("Unit launch in progress");
+  //     }
+  //     removeComputeCallback("tP", positionCallback);
+  //   };
+  //   addComputeCallback("tP", positionCallback);
+  //   // }
+  // }
+
+  // function addUnitsWithPositionsToTexture(
+  //   units: Unit[],
+  //   startPlace: THREE.Object3D,
+  //   endPlace: THREE.Mesh,
+  //   owner: "p" | "e",
+  // ) {
+  //   const targetId = targets.indexOf(endPlace);
+  //   const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
+
+  //   const dtPosition = gpuCompute.createTexture();
+  //   const dtVelocity = gpuCompute.createTexture();
+  //   const source = startPlace.position;
+  //   let slotsFound = 0;
+  //   const slots: number[] = [];
+  //   const positionCallback = (buffer: Float32Array) => {
+  //     // console.log("Position callback");
+  //     dtPosition.image.data.set(buffer);
+  //     const posArray = dtPosition.image.data;
+
+  //     for (let i = 0; i < slots.length; i++) {
+  //       const index = slots[i];
+  //       // console.log("Adding unit", units[i].pos);
+  //       if (owner === "p") {
+  //         posArray[index] = units[i].pos.x;
+  //         posArray[index + 1] = units[i].pos.y;
+  //         posArray[index + 2] = units[i].pos.z;
+  //         posArray[index + 3] = 0.6; // ship type
+  //       } else {
+  //         posArray[index] = units[i].pos.x;
+  //         posArray[index + 1] = units[i].pos.y;
+  //         posArray[index + 2] = units[i].pos.z;
+  //         posArray[index + 3] = 0.601; // ship type
+  //       }
+  //     }
+  //     removeComputeCallback("tP", positionCallback);
+  //     dtPosition.needsUpdate = true;
+
+  //     const rt = gpuCompute.getCurrentRenderTarget(positionVariable);
+  //     gpuCompute.renderTexture(dtPosition, rt);
+  //     dtVelocity.needsUpdate = true;
+  //     const rtv = gpuCompute.getCurrentRenderTarget(velocityVariable);
+  //     gpuCompute.renderTexture(dtVelocity, rtv);
+
+  //     console.log(
+  //       "Added units",
+  //       slots.length,
+  //       "to",
+  //       targetId,
+  //       "from",
+  //       source,
+  //       endPlace.position,
+  //       `(${dtTarget})`,
+  //       "for",
+  //       owner,
+  //     );
+  //     // startPlace.u.troops -= slots.length / 2;
+  //     slots.length = 0;
+  //     unitLaunchInProgress = false;
+  //   };
+
+  //   const velocityCallback = (buffer: Float32Array) => {
+  //     unitLaunchInProgress = true;
+  //     // console.log("Velocity callback");
+  //     dtVelocity.image.data.set(buffer);
+  //     const velArray = dtVelocity.image.data;
+  //     for (let i = 0; i < velArray.length; i += 4) {
+  //       // Only allow 1/2 of total units per p
+  //       if (unitsFound[owner] + slotsFound >= PARTICLES / 2 - 64) {
+  //         break;
+  //       }
+  //       // Check if the slot is empty
+  //       if (velArray[i + 3] === 0) {
+  //         // this is 1.0 or mass for non-units
+  //         // Update the slot
+  //         velArray[i] = units[slotsFound].rot.x;
+  //         velArray[i + 1] = units[slotsFound].rot.y;
+  //         velArray[i + 2] = units[slotsFound].rot.z;
+  //         velArray[i + 3] = dtTarget; // target castle id
+  //         slotsFound++;
+  //         slots.push(i);
+  //       }
+  //       if (slotsFound > units.length - 1) {
+  //         break;
+  //       }
+  //     }
+  //     if (slotsFound < Math.floor(units.length)) {
+  //       console.warn(`Only ${slotsFound} slots were found and updated. Requested ${units.length}.`);
+  //     }
+  //     removeComputeCallback("tV", velocityCallback);
+  //     addComputeCallback("tP", positionCallback);
+  //   };
+
+  //   addComputeCallback("tV", velocityCallback);
+  // }
 };
 
 init();
