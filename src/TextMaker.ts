@@ -202,6 +202,7 @@ export interface TextInstance {
   setPosition: (x: number, y: number, z: number) => void;
   updateText: (message: string) => void;
   setScale: (scale: number) => void;
+  remove: () => void;
   instancedMesh: THREE.InstancedMesh;
   instanceId: number;
 }
@@ -236,6 +237,7 @@ export default class TextMaker {
   _dummy: THREE.Object3D;
   _tempQuat2: THREE.Quaternion;
   cameraRotation: number;
+  _pool: number[] = [];
 
   constructor(characters?: string, maxCharsPerInstance?: number, maxInstances?: number) {
     this._characters = characters || DEFAULT_CHARS;
@@ -381,13 +383,20 @@ export default class TextMaker {
     followCameraRotation?: boolean,
     followCamera?: boolean,
   ): null | TextInstance {
-    const instanceId = this._instanceCount;
+    let instanceId = this._instanceCount;
+    const poolInstance = this._pool.pop();
+    if (poolInstance !== undefined) {
+      instanceId = poolInstance;
+    } else {
+      this._instanceCount++;
+    }
+
     // Check if we've reached the max instance count
     if (this._instanceCount >= this._maxInstances) {
       console.warn(">Max");
       return null;
     }
-    this._instanceCount++;
+
     this.instancedMesh.count = this._instanceCount;
     this._dummies[instanceId] = new THREE.Object3D();
     // Update the data texture
@@ -411,6 +420,10 @@ export default class TextMaker {
       updateText: (message: string, color?: THREE.Color) => {
         this.updateMessageTexture(instanceId, message);
         color && this.setColor(instanceId, color);
+      },
+      remove: () => {
+        this.updateMessageTexture(instanceId, "");
+        this._pool.push(instanceId);
       },
       setScale: (s: number) => {
         this._scales[instanceId] = s;

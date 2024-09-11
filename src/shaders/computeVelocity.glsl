@@ -72,7 +72,7 @@
 
           if ( compareFloats(ourType, 0.6) && compareFloats(theirType, 0.6)) {
             // Ship interactions (all avoid each other)
-            float nearField = (-10.1) / (distanceSq); // distance to the 4th power
+            float nearField = (-0.1) / (distanceSq); // distance to the 4th power
             
             acceleration += nearField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
@@ -88,7 +88,7 @@
             float repulsionField = -0.5*gravityConstant * mass2 / (distanceSq*distanceSq);
             //repulsionField = min( repulsionField, 2. );
 
-            acceleration += repulsionField * normalize( dPos );
+            // acceleration += repulsionField * normalize( dPos );
           }
         }
       }
