@@ -9,6 +9,18 @@
     return abs(a - b) < 0.01; // lenient comparison
   }
 
+vec2 decodeFloats(float encoded) {
+    float sign = sign(encoded);
+    float absEncoded = abs(encoded);
+    float a = floor(absEncoded / 10.0) / 1000.0;
+    float b = sign * mod(absEncoded, 10.0);
+    return vec2(a, b);
+}
+
+float encodeFloats(float a, float b) {
+    return sign(b) * (floor(a * 1000.0) * 10.0 + abs(b));
+}
+
   void main()	{
     float gravityConstant = 100. * (d+1.);
     vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -19,7 +31,13 @@
     float ourType = tmpPos.w;
     vec4 tmpVel = texture2D( tV, uv );
     vec3 vel = tmpVel.xyz;
-    float mass = tmpVel.w; // also target
+
+    float forceMultiplier = 1.0;
+
+    vec2 targets = decodeFloats(tmpVel.w);
+    float mass = targets.y;
+    float start = targets.x; 
+    // float mass = tmpVel.w; // also target
 
     if ( mass > 0.0 ) {
       vec3 acceleration = vec3( 0.0 );
@@ -34,7 +52,10 @@
           vec3 pos2 = pos2Temp.xyz;
           vec4 velTemp2 = texture2D( tV, secondParticleCoords );
           vec3 vel2 = velTemp2.xyz;
-          float mass2 = velTemp2.w;
+          vec2 targets = decodeFloats(velTemp2.w);
+          // float mass2 = velTemp2.w;
+          float mass2 = targets.y;
+          float start2 = targets.x;
 
           float idParticle2 = secondParticleCoords.y * resolution.x + secondParticleCoords.x;
           
@@ -61,6 +82,13 @@
           float distanceSq = distance * distance;
           // float distanceSq = max(distance * distance, 0.0001);
 
+          if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, start)) {
+            // Gradually increase force multiplier the further we are from start,
+            // up to 1.0 when we are 10 units away
+            forceMultiplier = min(1.0, distanceSq / 100.0);
+          }
+
+
           // Collide with target, the only way to kill a particle
           // 0.6 type is ships, in that case mass is target id
           if ( distance < .5 && compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
@@ -72,7 +100,7 @@
 
           if ( compareFloats(ourType, 0.6) && compareFloats(theirType, 0.6)) {
             // Ship interactions (all avoid each other)
-            float nearField = (-0.1) / (distanceSq); // distance to the 4th power
+            float nearField = (-0.4) / (distanceSq); // distance to the 4th power
             
             acceleration += nearField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
@@ -85,7 +113,7 @@
             acceleration += gravityField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(theirType, 0.1)) { 
             // Ships are repelled by other castles too, but only when they are close
-            float repulsionField = -0.5*gravityConstant * mass2 / (distanceSq*distanceSq);
+            float repulsionField = -0.2*gravityConstant * mass2 / (distanceSq*distanceSq);
             //repulsionField = min( repulsionField, 2. );
 
             // acceleration += repulsionField * normalize( dPos );
@@ -94,7 +122,7 @@
       }
 
       // Dynamics
-      vel += delta * acceleration;
+      vel += delta * acceleration * forceMultiplier;
       if(length(vel) > 0.) {
         vel = normalize( vel ) * min( length( vel ), 1.0 * (3.0+1.));
       }
@@ -104,7 +132,7 @@
       return;
     }
 
-    gl_FragColor = vec4(vel, mass);
+    gl_FragColor = vec4(vel, encodeFloats(start, mass));
 
   }
 

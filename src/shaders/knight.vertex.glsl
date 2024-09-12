@@ -9,7 +9,6 @@ varying vec4 vColor;
 varying vec4 vPosition;
 varying vec4 vVelocity;
 varying float vEnemy;
-varying vec3 vNormal;
 varying vec3 vViewPosition;
 
 bool compareFloats(float a, float b, float epsilon) {
@@ -53,7 +52,6 @@ void main() {
   
   vec4 velTemp = texture2D( tV, dtUv );
   vec3 vel = velTemp.xyz;
-  float mass = velTemp.w;
 
   if(compareFloats(posTemp.w, 0.600, 0.0001)) {
     vColor = vec4(pC,1.);
@@ -65,7 +63,6 @@ void main() {
     vColor = vec4( 1.0, 1.0, 0.0, 0.0 );
   }
 
-  
   vVelocity = velTemp;
   vec3 newPos = mat3(modelMatrix) * position;
 
@@ -79,7 +76,6 @@ void main() {
 
   vec4 mvPosition = modelViewMatrix * (vec4( position, 1.0 ) + vec4(pos,1.0));
 
-  vNormal = normalize( normalMatrix * normal );
   gl_Position = projectionMatrix * viewMatrix * vec4(newPos, 1.0);
   vPosition = gl_Position;
 

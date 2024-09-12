@@ -15,7 +15,7 @@ import { createGrass } from "./grass";
 type Unit = {
   pos: THREE.Vector3;
   rot: THREE.Vector3;
-  start: THREE.Vector3;
+  start: THREE.Mesh;
   target: THREE.Mesh;
   owner: "p" | "e";
 };
@@ -370,7 +370,7 @@ const init = async () => {
       side: THREE.DoubleSide,
       flatShading: true,
     });
-    const rand = 30; // Math.ceil(Math.random() * 30) + 1;
+    const rand = Math.ceil(Math.random() * 30) + 1;
     dandelionGroup.userData.seeds = rand;
     const instancedSeeds = new THREE.InstancedMesh(seedGeometry, seedsMaterial, rand);
     dandelionGroup.add(instancedSeeds);
@@ -550,13 +550,14 @@ const init = async () => {
       // Check if the ship has collided
       if (dataAgg[i + 3] < 0) {
         // The ship has collided
+
         const index = Math.floor((-dataAgg[i + 3] - 0.5) * WIDTH);
         const target = targets[index];
         // Deduct points from the castle or perform other actions
         const shipOwner = dataAgg[i + 1] < 0.6005 ? "p" : "e"; // 0.6 is player, 0.601 is enemy
         if (target) {
           target.userData.lives -= 1;
-          target.userData.text.updateText("O".repeat(Math.max(target.userData.lives, 0)));
+          target.userData.text.updateText("0".repeat(Math.max(target.userData.lives, 0)));
           if (target.userData.lives <= 0) {
             // Target destroyed
             targets[index] = null;
@@ -1026,7 +1027,7 @@ const init = async () => {
     const text = textMaker.addText("", new THREE.Color(0xff0000), true, true);
     text?.setPosition(enemy.position.x, enemy.position.y + 1, enemy.position.z);
     text?.setScale(10.0);
-    text?.updateText("OOOOOO");
+    text?.updateText("12345678");
     enemy.userData.text = text;
     enemy.userData.type = "enemy";
     enemy.userData.lives = 6;
@@ -1128,7 +1129,7 @@ const init = async () => {
       const unit = {
         pos: dummyVec.clone(),
         rot: dummyVec, // temp
-        start: dandelion.position.clone(),
+        start: targets[0] as THREE.Mesh,
         target,
         owner: "p" as "p" | "e",
       };
@@ -1158,7 +1159,7 @@ const init = async () => {
 
   function syncLivesText(target: THREE.Mesh) {
     const text = target.userData.text as TextInstance;
-    text.updateText("O".repeat(Math.max(target.userData.lives, 0)));
+    text.updateText("0".repeat(Math.max(target.userData.lives, 0)));
   }
 
   function targeting() {
@@ -1209,6 +1210,18 @@ const init = async () => {
       }
     }
     return null;
+  }
+
+  // For example:
+  // encodeTwoFloatsAsOne(1.23, 2.34) = 12302.340
+  function encodeFloats(a: number, b: number) {
+    // Multiply first float by 100 and floor it
+    const encodedA = Math.floor(a * 1000);
+    const bSign = Math.sign(b);
+    // Multiply second float by 10 to preserve one decimal place
+    const encodedB = Math.abs(b);
+    // Combine the two values
+    return bSign * (encodedA * 10 + encodedB);
   }
 
   function syncWithGPU() {
@@ -1283,14 +1296,26 @@ const init = async () => {
       dtVelocity.image.data.set(buffer);
       const velArray: Uint8ClampedArray = dtVelocity.image.data;
       const livingTargets = targets.filter((t) => t !== null);
-      const randomTarget = livingTargets[Math.floor(Math.random() * livingTargets.length)];
-      const randomTargetIndex = targets.indexOf(randomTarget);
+      // Sort by distance to 0, 0, 0
+      livingTargets.sort((a, b) => {
+        const distA = a!.position.length();
+        const distB = b!.position.length();
+        return distA - distB;
+      });
+
+      const closestTarget = livingTargets[0];
+      const closestTargetIndex = targets.indexOf(closestTarget);
       for (let i = 0; i < velArray.length; i += 4) {
         const unit = unitQueue[slotsFound];
 
         if (unit && slotsFound < unitQueue.length + 1) {
           const targetId = targets.indexOf(unit.target);
           const dtTarget = (targetId + 0.5) / WIDTH + 0.5;
+
+          const startId = targets.indexOf(unit.start);
+          const dtStart = (startId + 0.5) / WIDTH + 0.5;
+
+          const encoded = encodeFloats(dtStart, dtTarget);
 
           // // Only allow 1/2 of total units per p
           // if (unitsFound[unit.owner] + slotsFound >= PARTICLES / 2 - 64) {
@@ -1303,7 +1328,7 @@ const init = async () => {
             velArray[i] = unit.rot.x;
             velArray[i + 1] = unit.rot.y;
             velArray[i + 2] = unit.rot.z;
-            velArray[i + 3] = dtTarget; // target castle id
+            velArray[i + 3] = encoded; // target castle id
             slotsFound++;
             slots.push(i);
           }
@@ -1312,11 +1337,14 @@ const init = async () => {
           // }
         }
         // See if units are without target
-        const dtTarget = velArray[i + 3];
+        const dtTarget = velArray[i + 3] % 10;
         const targetId = Math.floor((dtTarget - 0.5) * WIDTH);
-        if (dtTarget > 0 && !targets[targetId]) {
+        if (dtTarget > 0 && !targets[targetId] && i > WIDTH * 4) {
+          const dtTarget = (closestTargetIndex + 0.5) / WIDTH + 0.5;
+          const dtStart = 0 + 0.5 / WIDTH + 0.5;
+          const encoded = encodeFloats(dtStart, dtTarget);
           // redirect to another random target
-          velArray[i + 3] = (randomTargetIndex + 0.5) / WIDTH + 0.5;
+          velArray[i + 3] = encoded;
         }
       }
 

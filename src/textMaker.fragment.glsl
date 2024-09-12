@@ -9,6 +9,7 @@ uniform float time;
 // t = textTexture, m = messageTexture, l = length, c = color, u = uv, i = instance, vUv = uv
 // cp = charPos, ci = charIndex, cu = charUV, csu = charSizeUV, sx = scaleX, sy = scaleY
 // cc = charColor
+float spacingFactor = 0.5;
 void main() {
 // vec2 clampedU = u;
 // float ux = clamp(u.x, 0.001, 0.999);
@@ -28,15 +29,13 @@ float sx = (u.x * csuX * l);
 float sy = (-u.y * 0.11);
 float msx = mod(sx, csuX);
 float msy = mod(sy, csuY);
-cu.x = (col * csuX) + msx;
-// cu.x = clamp(cu.x, 0.001, 0.999);
-cu.y = (1.0 - row * csuY) - msy;
-vec4 cc = texture2D(t, cu);
-if (cc.a < 0.1 || msx  < 0.011 || msx  > 0.9 * csuX || msy < 0.01 || msy > 0.97 * csuY) {
-  // gl_FragColor= vec4(1.0, 0.0, 0.0, 1.0);
-  discard;
-  // return;
-} else {
-  gl_FragColor = (cc) * vec4(c, 1.0);
-}
+    cu.x = ((col * csuX) + msx);
+    cu.y = (1.0 - row * csuY) - msy;
+    vec4 cc = texture2D(t, cu);
+    
+    if (cc.a < 0.1 || msx < 0.011 || msx > 0.9 * csuX || msy < 0.01 || msy > 0.97 * csuY) {
+        discard;
+    } else {
+        gl_FragColor = cc * vec4(c, 1.0);
+    }
 }
