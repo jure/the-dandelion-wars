@@ -65,7 +65,7 @@ void main() {
     // Organic wind animation
     float windStrength = 0.3;
     float windFrequency = 1.5;
-    float noise = snoise(vec2(offset.x * 0.1 + time * 0.5, offset.y * 0.1)) * 0.5 + 0.5;
+    float noise = snoise(vec2(offset.x * 0.1 + time * 0.2, offset.y * 0.1)) * 0.5 + 0.5;
     float windEffect = sin(time * windFrequency + noise * 6.28) * windStrength;
     
     // Apply wind effect with smooth falloff towards the bottom

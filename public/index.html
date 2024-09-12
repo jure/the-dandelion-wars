@@ -2,21 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="theme-color" content="#000000" />
-    <meta property="og:title" content="Dandelethal">
-    <meta property="og:type" content="website" />
-    <meta property="og:description" content="A WebXR game for JS13K game jam.">
-    <!-- <meta property="og:image" content="temp">
-    <meta property="og:url" content="temp"> -->
-    <meta name="twitter:card" content="summary_large_image">
     <title>Dandelethal</title>
     <style>
-      body { margin: 0; background: black }
+      body { margin: 0; background: black; font-family: Courier, monospace; }
       canvas { display: block; }
       .b {
-        border: 9px solid #fff;
-        border-image: linear-gradient(45deg, #266F56, #C52F34) 1;
+        border: 9px solid #aaa;
       }
       .u {
         position: absolute;
@@ -24,7 +15,6 @@
         left: 50%;
         transform: translate(-50%, -50%); 
         margin-right: -33%;
-        font-family: Courier, monospace;
         font-size: 1.3em;
         color: #fff;
         background: rgba(0,0,0,0.6);
@@ -48,21 +38,9 @@
         margin-top: 1em;
         border: 1px solid #fff;
         background: rgba(0,0,0,0.5);
-        color: #fff;
-        cursor: pointer;
-      }
-      #i {
-        display: none;
-      }
-      #d {
-        font-size: 1em;
-        font-family: 'Courier New', Courier, monospace;
-        font-weight: bold;
-      }
-      #m {
-        font-size: 1em;
-        font-family: 'Courier New', Courier, monospace;
-        font-weight: bold;
+        color: #aaa;
+        font-weight: 700;
+        font-family: Courier, monospace;
       }
       #p {
         display: none;
@@ -80,10 +58,10 @@
   <body>
     <div id="s" class="b u">
       <h1>The Dandelion Wars</h1>
-      <p>Earth is under siege by a mysterious alien force. The key to humanity’s survival lies in a most unlikely weapon: dandelions.</p>
-        <p>Using advanced remote reality machines, humans control dandelions to attack the invaders. Picking and blowing them sends the weaponized seeds flying, devastating the enemy forces.</p>
-        <p>But the aliens have turned the tide by corrupting dandelions with 13 seeds—turning them into hacked, dangerous weapons. One wrong blow could mean disaster. Now, the battle rages on, and every breath counts. </p><p><b>Beware the cursed 13.</b></p>
-      <button id="b" class="c">Play</button>
+      <p>
+In a world besieged by aliens, humanity's last defense lies in an unexpected weapon: dandelions.</p><p>
+  Harness their power using remote reality to blow weaponized seeds at the invaders.</p><p>But beware—the aliens have hacked some dandelions with 13 seeds into deadly traps. With every breath, the fate of Earth hangs in the balance. Avoid the cursed 13 and fight back!
+      </p>   <button id="b" class="c">Engage remote reality</button>
     </div>
     <div id="p" class="b u">
       Paused 

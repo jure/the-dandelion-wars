@@ -137,18 +137,18 @@ const letters = {
     [, 1],
   ],
   "Z": [[1, 1, 1], [, , 1], [, 1], [1], [1, 1, 1]],
-  // "0": [
-  //   [, 1],
-  //   [1, , 1],
-  //   [1, , 1],
-  //   [1, , 1],
-  //   [, 1],
-  // ],
   "0": [
+    [, 1],
+    [1, , 1],
+    [1, , 1],
+    [1, , 1],
+    [, 1],
+  ],
+  "|": [
     [1, 1, 1, 1],
-    [1, , , 1],
-    [1, , , 1],
-    [1, , , 1],
+    [1, 1, 1, 1],
+    [1, 1, 1, 1],
+    [1, 1, 1, 1],
     [1, 1, 1, 1],
   ],
   "1": [
@@ -204,7 +204,7 @@ const letters = {
   ],
 };
 
-const DEFAULT_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?";
+const DEFAULT_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0|123456789";
 export interface TextInstance {
   setPosition: (x: number, y: number, z: number) => void;
   updateText: (message: string) => void;
@@ -333,7 +333,7 @@ export default class TextMaker {
   generateTexture() {
     const canvasSize = 512; // You can adjust this for better resolution.
     const canvas = document.createElement("canvas");
-    document.body.appendChild(canvas);
+    // document.body.appendChild(canvas);
     canvas.width = canvasSize;
     canvas.height = canvasSize;
     const ctx = canvas.getContext("2d");
@@ -438,6 +438,7 @@ export default class TextMaker {
         this._pool.push(instanceId);
       },
       setScale: (s: number) => {
+        this.setScale(instanceId, s, s, s);
         this._scales[instanceId] = s;
       },
       instancedMesh: this.instancedMesh,

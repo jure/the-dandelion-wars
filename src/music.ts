@@ -36,7 +36,8 @@ export default class Music {
   private filter!: BiquadFilterNode;
 
   constructor() {
-    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    this.audioContext = new window.AudioContext();
+    console.log("Audio context created", this.audioContext);
     this._setupEffects();
   }
 
@@ -139,7 +140,7 @@ export default class Music {
       noise.connect(noiseFilter);
       noiseFilter.connect(noiseGain);
       noiseGain.connect(this.audioContext.destination);
-      noiseGain.gain.setValueAtTime(0.2, time);
+      noiseGain.gain.setValueAtTime(0.1, time);
       noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
       noise.start(time);
     }
@@ -205,7 +206,7 @@ export default class Music {
     this.currentChord = 0;
     this.currentSection = "A";
     this.sectionCounter = 0;
-    // this.scheduleNote();
+    this.scheduleNote();
   }
 
   public stop(): void {

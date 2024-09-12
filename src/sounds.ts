@@ -38,23 +38,28 @@ const getBuffer = (D: any[]) => {
 };
 
 // Frequencies for one octave
-const frequencies = [609, 653, 705, 822, 887, 954, 1050].map((f) => f / 8);
+const frequencies = [261, 277, 293, 311, 329, 349, 369, 392, 415, 440].map((f) => f / 4);
 // Generate three octaves
 
 const sounds: AudioBufferSourceNode[] = [];
 for (let i = -1; i < 3; i++) {
-  sounds.push(...frequencies.map((f) => getBuffer(gsound(f * Math.pow(2, i), 0.05))));
+  sounds.push(...frequencies.map((f) => getBuffer(gsound(f * Math.pow(2, i), 0.1))));
 }
 
 let positionalPoolIndex = 0;
 
-export function playRandomSoundAtPosition(
+// export function playSound(note: number) {
+
+// }
+
+export function playSoundAtPosition(
   player: "p" | "e",
   position: THREE.Vector3,
   positionalPool: {
     e: THREE.PositionalAudio[];
     p: THREE.PositionalAudio[];
   },
+  note: number,
 ) {
   // Connect to positional audio
   // Only start playing on regular interval
@@ -62,28 +67,23 @@ export function playRandomSoundAtPosition(
   //   positionalPool[player][positionalPoolIndex++ % positionalPool[player].length];
 
   // Is any positional audio playing?
-  const playing = positionalPool[player].some((p) => p["isPlaying"]);
-  if (!playing) {
-    setTimeout(
-      () => {
-        const positionalAudio =
-          positionalPool[player][positionalPoolIndex++ % positionalPool[player].length];
+  // const playing = positionalPool[player].some((p) => p["isPlaying"]);
+  // if (!playing) {
+  setTimeout(
+    () => {
+      const positionalAudio =
+        positionalPool[player][positionalPoolIndex++ % positionalPool[player].length];
 
-        // Is any positional audio playing?
-        const playing = positionalPool[player].some((p) => p["isPlaying"]);
-        if (!playing) {
-          positionalAudio.position.copy(position);
-
-          const note = player === "p" ? 19 : 6;
-
-          const source = sounds[note + 6];
-
-          source.buffer && positionalAudio["setBuffer"](source.buffer);
-
-          positionalAudio.play();
-        }
-      },
-      50 - ((Date.now() - now) % 50),
-    );
-  }
+      // Is any positional audio playing?
+      const playing = positionalAudio["isPlaying"];
+      if (!playing) {
+        positionalAudio.position.copy(position);
+        const source = sounds[note];
+        source.buffer && positionalAudio["setBuffer"](source.buffer);
+        positionalAudio.play();
+      }
+    },
+    50 - ((Date.now() - now) % 50),
+  );
+  // }
 }

@@ -15,13 +15,13 @@ bool compareFloats(float a, float b, float epsilon) {
   return abs(a - b) < epsilon;
 }
 
-// mat3 lookAt(vec3 direction) {
-//     vec3 up = vec3(0.0, 1.0, 0.0);
-//     vec3 right = normalize(cross(up, direction));
-//     vec3 newUp = cross(direction, right);
-
-//     return mat3(-right, newUp, -direction);
-// }
+vec2 decodeFloats(float encoded) {
+    float sign = sign(encoded);
+    float absEncoded = abs(encoded);
+    float a = floor(absEncoded / 10.0) / 1000.0;
+    float b = sign * mod(absEncoded, 10.0);
+    return vec2(a, b);
+}
 
 mat3 lookAt2(vec3 direction) {
     // Change the up vector to (0, 0, 1) for Z-up system
@@ -32,20 +32,6 @@ mat3 lookAt2(vec3 direction) {
     return mat3(-right, newUp, -direction);
 }
 
-// mat3 lookAt3(vec3 direction) {
-//     vec3 up = vec3(0.0, 0.0, 1.0); // Z-up system
-//     vec3 right = normalize(cross(direction, up));
-    
-//     // Handle the case when direction is parallel to up
-//     if (length(right) < 0.001) {
-//         right = vec3(1.0, 0.0, 0.0);
-//     }
-    
-//     vec3 newUp = normalize(cross(right, direction));
-    
-//     return mat3(right, newUp, -direction); // Note the negation of direction
-// }
-
 void main() {
   vec4 posTemp = texture2D( tP, dtUv );
   vec3 pos = posTemp.xyz;
@@ -53,7 +39,10 @@ void main() {
   vec4 velTemp = texture2D( tV, dtUv );
   vec3 vel = velTemp.xyz;
 
-  if(compareFloats(posTemp.w, 0.600, 0.0001)) {
+  vec2 targets = decodeFloats(velTemp.w);
+  if(compareFloats(targets.x, 0.52343, 0.01)) {
+    vColor = vec4(eC,1.);
+  } else if (compareFloats(posTemp.w, 0.600, 0.0001)) {
     vColor = vec4(pC,1.);
     vEnemy = 0.0;
   } else if (compareFloats(posTemp.w,0.601, 0.0001)) {
@@ -65,6 +54,11 @@ void main() {
 
   vVelocity = velTemp;
   vec3 newPos = mat3(modelMatrix) * position;
+
+  // Make enemies bigger
+  if(vEnemy > 0.5) {
+    newPos *= 2.0;
+  }
 
   // Assuming `vel` is your velocity or direction vector and is normalized
   mat3 orientation = lookAt2(normalize(vel));

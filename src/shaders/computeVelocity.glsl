@@ -1,5 +1,5 @@
   @nomangle resolution tP tV
-  #define delta (1.0/60.0)
+  float delta = 1.0/60.0;
   uniform float d; // difficulty
   
   const float width = resolution.x;
@@ -36,8 +36,16 @@ float encodeFloats(float a, float b) {
 
     vec2 targets = decodeFloats(tmpVel.w);
     float mass = targets.y;
-    float start = targets.x; 
+    float start = targets.x;
+
+    float speedF = 4.0;
     // float mass = tmpVel.w; // also target
+    // if target is player, target id = 
+    if (compareFloats(mass, 0.5078)) {
+      // Cursed seed, moves sloooow
+      delta = 0.1/60.0;
+      speedF = 0.5;
+    }
 
     if ( mass > 0.0 ) {
       vec3 acceleration = vec3( 0.0 );
@@ -84,11 +92,16 @@ float encodeFloats(float a, float b) {
 
           if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, start)) {
             // Gradually increase force multiplier the further we are from start,
-            // up to 1.0 when we are 10 units away
+            // up to 1.0
             forceMultiplier = min(1.0, distanceSq / 100.0);
           }
 
-
+          // "hacked"/cursed seeds have a different effect, launched from 0.5234
+          if (distance < .5 && compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass) && compareFloats(start, 0.5234)) {
+            vel = vec3(0);
+            gl_FragColor = vec4( vel, -mass - 1e5); // negative mass times minus a million is a cursed target indicator
+            return;
+          }
           // Collide with target, the only way to kill a particle
           // 0.6 type is ships, in that case mass is target id
           if ( distance < .5 && compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
@@ -124,7 +137,7 @@ float encodeFloats(float a, float b) {
       // Dynamics
       vel += delta * acceleration * forceMultiplier;
       if(length(vel) > 0.) {
-        vel = normalize( vel ) * min( length( vel ), 1.0 * (3.0+1.));
+        vel = normalize( vel ) * min( length( vel ), speedF);
       }
     } else {
       // Dead particle, reset it
