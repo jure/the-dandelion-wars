@@ -1026,7 +1026,7 @@ const init = async () => {
 
     const text = textMaker.addText("", new THREE.Color(0xff0000), true, true);
     text?.setPosition(enemy.position.x, enemy.position.y + 1, enemy.position.z);
-    text?.setScale(10.0);
+    text?.setScale(5.0);
     text?.updateText("12345678");
     enemy.userData.text = text;
     enemy.userData.type = "enemy";
@@ -1075,7 +1075,7 @@ const init = async () => {
       const directionToCenter = new THREE.Vector3()
         .subVectors(new THREE.Vector3(0, sphere.position.y, 0), sphere.position)
         .normalize();
-      sphere.position.add(directionToCenter.multiplyScalar(0.01));
+      // sphere.position.add(directionToCenter.multiplyScalar(0.01));
 
       // Remove if too close to center
       if (new THREE.Vector2(sphere.position.x, sphere.position.z).length() < 0.5) {

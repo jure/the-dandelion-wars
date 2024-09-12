@@ -294,8 +294,11 @@ export default class TextMaker {
       },
       vertexShader,
       fragmentShader,
+      // blending: THREE.AdditiveBlending,
       depthWrite: true,
-      "depthTest": false,
+      // alphaTest: 1.0,
+      // depthWrite: true,
+      // "depthTest": true,
     });
 
     textShaderMaterial["transparent"] = true;
@@ -328,15 +331,15 @@ export default class TextMaker {
   }
 
   generateTexture() {
-    const canvasSize = 64; // You can adjust this for better resolution.
+    const canvasSize = 512; // You can adjust this for better resolution.
     const canvas = document.createElement("canvas");
-    // document.body.appendChild(canvas);
+    document.body.appendChild(canvas);
     canvas.width = canvasSize;
     canvas.height = canvasSize;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error();
 
-    const size = { x: 8, y: 8 };
+    const size = { x: 64, y: 64 };
     function draw(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
       // Use the letters array to draw the text atlas. Truthy value is a filled pixel.
       const letter = letters[text as keyof typeof letters];
@@ -344,9 +347,10 @@ export default class TextMaker {
       for (let i = 0; i < letter.length; i++) {
         for (let j = 0; j < letter[i].length; j++) {
           if (letter[i][j]) {
-            // White pixel
+            // We're scaling the letter up 4x
+
             ctx.fillStyle = "white";
-            ctx.fillRect(x + j, y + i, 1, 1);
+            ctx.fillRect(x + j * 8, y + i * 8 + 5, 8, 8);
           }
         }
       }
@@ -361,6 +365,7 @@ export default class TextMaker {
 
     const t = new THREE.CanvasTexture(canvas);
     t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
     return t;
   }
 
