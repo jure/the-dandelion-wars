@@ -17,9 +17,9 @@ void main() {
   // vec3 color1 = vec3(0.0, 0.0, 1.0);
   // vec3 color2 = vec3(1.0, 1.0, 1.0);
   // vec3 color2 = vec3(pow(green, 6.0), green, pow(green, 3.0)) * 1.4;
-  vec3 baseColor = vColor.rgb + vColor.rgb * min(length(vVelocity.xy), 1.5) * (1.0-depth);
+  vec3 baseColor = vColor.rgb; // + vColor.rgb * min(length(vVelocity.xy), 1.5) * (1.0-depth);
 
-  vec3 lightDir = normalize(vec3(0.0, -1.0, 1.0));
+  vec3 lightDir = normalize(vec3(0.0, -0.4472, -0.8944));
 
 	  // In three.js: uniforms.direction.transformDirection( viewMatrix );
     // In glsl:

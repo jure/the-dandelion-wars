@@ -140,7 +140,7 @@ export default class Music {
       noise.connect(noiseFilter);
       noiseFilter.connect(noiseGain);
       noiseGain.connect(this.audioContext.destination);
-      noiseGain.gain.setValueAtTime(0.1, time);
+      noiseGain.gain.setValueAtTime(0.06, time);
       noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
       noise.start(time);
     }

@@ -64,7 +64,7 @@ const unitsFound = {
 };
 
 let wave = 0;
-let enemiesDead = 19;
+let enemiesDead = 0;
 // const enemiesSpawned = 0;
 let lastEnemySpawn = 0;
 let wavePause: number | null;
@@ -453,10 +453,29 @@ const init = async () => {
   }
 
   function scatterDandelions(count: number, innerRadius = 0, outerRadius = 2, ornament = false) {
-    let toCurse = 2 - dandelions.filter((d) => d.userData.seeds === 13).length;
+    let toCurse = 1 - dandelions.filter((d) => d.userData.seeds === 13).length;
     for (let i = 0; i < count; i++) {
-      // Always have to be two cursed dandelions
-      const dandelion = createDandelion(toCurse ? 13 : 0);
+      // Always has to be one cursed dandelions
+      console.log("toCurse", toCurse);
+      const dandelion = createDandelion(toCurse > 0 ? 13 : 0);
+
+      // // Temp debug
+      // setTimeout(() => {
+      //   if (dandelion.userData.seeds === 13) {
+      //     pickedUpDandelion = dandelion;
+      //     const target = targets.filter((t, i) => t && i > 2)[0];
+      //     if (target) {
+      //       blowDandelion(dandelion, target);
+      //     }
+      //     setTimeout(() => {
+      //       dandelionToRemove = dandelion;
+      //       pickedUpDandelion = null;
+      //     }, 2000);
+      //   }
+      // }, 5000);
+
+      // //
+
       toCurse = Math.max(0, toCurse - 1);
 
       let x: number, z: number, r: number;
@@ -580,7 +599,8 @@ const init = async () => {
     // Launch as many ships as the target has lives
     for (let i = 0; i < target.userData.lives; i++) {
       const startPos = target.position.clone();
-      v1.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      v1.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+      v1.multiplyScalar(0.1);
       startPos.add(v1);
       const startRot = new THREE.Vector3(Math.random(), Math.random(), Math.random());
       const owner = "e";
@@ -925,7 +945,7 @@ const init = async () => {
     c.add(d1);
     if (text) {
       d1.position.set(0, y, 0);
-      d1.rotation.set(0, -Math.PI / 2, 0);
+      d1.rotation.set(0, Math.PI / 2, 0);
       d1.updateMatrixWorld(true);
       d1.getWorldQuaternion(q1);
       d1.getWorldPosition(v1);
@@ -1146,7 +1166,7 @@ const init = async () => {
       sphere.position.add(directionToCenter.multiplyScalar(0.01 * (wave + 1)));
 
       // Remove if too close to center
-      if (sphere.position.length() < 1.7) {
+      if (sphere.position.distanceTo(center) < 0.3) {
         targets[targets.indexOf(sphere)] = null;
         sphere.userData.text.remove();
         scene.remove(sphere);
@@ -1350,7 +1370,7 @@ const init = async () => {
       // console.log("Velocity callback");
       dtVelocity.image.data.set(buffer);
       const velArray: Uint8ClampedArray = dtVelocity.image.data;
-      const livingTargets = targets.filter((t, i) => t !== null && i > 1); // Skip player targets
+      const livingTargets = targets.filter((t, i) => t !== null && i > 1 && t.userData.lives > 0); // Skip player targets
       // Sort by distance to 0, 0, 0
       livingTargets.sort((a, b) => {
         const distA = a!.position.length();
