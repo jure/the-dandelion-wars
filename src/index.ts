@@ -7,7 +7,6 @@ import computePosition from "./shaders/computePosition.glsl";
 import computeAggregate from "./shaders/computeAggregate.glsl";
 import seedVertex from "./shaders/seed.vertex.glsl";
 import seedFragment from "./shaders/seed.fragment.glsl";
-// import { OrbitControls } from "./OrbitControls";
 import { playSoundAtPosition } from "./sounds";
 import Music from "./music";
 import { createGrass } from "./grass";
@@ -40,6 +39,9 @@ let velocityVariable: Variable;
 let positionVariable: any;
 let aggregateVariable: any;
 let textMaker: TextMaker;
+let tutorialTimer = 0;
+// let tutorial1Shown: false | number = false;
+// let tutorial2Shown: false | number = false;
 // let isDragging = false;
 let gameStarted = false;
 let currentTime = 0;
@@ -48,7 +50,6 @@ const unitQueue: Unit[] = [];
 const v1 = new THREE.Vector3();
 const v2 = new THREE.Vector3();
 const q1 = new THREE.Quaternion();
-const q2 = new THREE.Quaternion();
 const d1 = new THREE.Object3D();
 const dtAggregateBuffer = new Float32Array(PARTICLES * 4);
 const dtVelocityBuffer = new Float32Array(PARTICLES * 4);
@@ -64,7 +65,7 @@ const unitsFound = {
 
 let wave = 0;
 let enemiesDead = 19;
-const enemiesSpawned = 0;
+// const enemiesSpawned = 0;
 let lastEnemySpawn = 0;
 let wavePause: number | null;
 let score = 0;
@@ -85,7 +86,7 @@ let grassInstances: THREE.InstancedMesh;
 let dandelionToRemove: THREE.Object3D | null = null;
 
 // let lastRotationTime = 0;
-const cameraDirection = new THREE.Vector3();
+// const cameraDirection = new THREE.Vector3();
 
 let pickedUpDandelion: THREE.Object3D | null = null;
 const fftArray: Uint8Array = new Uint8Array(32);
@@ -265,8 +266,8 @@ const init = async () => {
       "#include <begin_vertex>",
       `#include <begin_vertex>
       vUv = uv;
-      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-      vWorldPosition = worldPosition.xyz;
+      vec4 worldPosition=modelMatrix*vec4(position,1.0);
+      vWorldPosition=worldPosition.xyz;
       `,
     );
 
@@ -276,12 +277,12 @@ const init = async () => {
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <logdepthbuf_fragment>",
       `#include <logdepthbuf_fragment>
-      vec3 tc = vec3(0.039, 0.141, 0.447);
-      vec3 mc = vec3(0.0, 0.467, 0.745);
-      vec3 bc = vec3(0.529, 0.807, 0.922);
-      float h = normalize(vWorldPosition).y;
-      if (h > 0.0) { diffuseColor.rgb = mix(mc, tc, smoothstep(0.0, 1.0, h)); } else {
-        diffuseColor.rgb = mix(bc, mc, smoothstep(-1.0, 0.0, h)); }
+      vec3 a=vec3(0.039,0.141,0.447);
+      vec3 b=vec3(0.0,0.467,0.745);
+      vec3 c=vec3(0.529,0.807,0.922);
+      float h=normalize(vWorldPosition).y;
+      if (h>0.0){diffuseColor.rgb=mix(b,a,smoothstep(0.0,1.0,h));}else{
+        diffuseColor.rgb=mix(c,b,smoothstep(-1.0,0.0,h));}
       `,
     );
   };
@@ -328,23 +329,12 @@ const init = async () => {
   function createSeedGeometry() {
     const points = [];
 
-    // function createSeedGeometry() {
-    //   const seedGeometry = new THREE.CylinderGeometry(0.05, 0.03, 0.14, 3);
-    //   return seedGeometry;
-    // }
     points.push(new THREE.Vector2(0, 0)); // Bottom of the seed
     points.push(new THREE.Vector2(0.03, 0));
     points.push(new THREE.Vector2(0.05, 0.14)); // Top of the seed
     points.push(new THREE.Vector2(0.0, 0.14)); // Tip of the seed
-    // points.push(new THREE.Vector2(0.2, 0.7)); // Top of the tuft
-
-    // Scale points
-    points.forEach((point) => {
-      // point.multiplyScalar(scale);
-    });
 
     const seedGeometry = new THREE.LatheGeometry(points, 4);
-    // seedGeometry.computeVertexNormals();
     return seedGeometry;
   }
 
@@ -467,7 +457,6 @@ const init = async () => {
     for (let i = 0; i < count; i++) {
       // Always have to be two cursed dandelions
       const dandelion = createDandelion(toCurse ? 13 : 0);
-      console.log("needs cursed", toCurse ? "yes" : "no", toCurse);
       toCurse = Math.max(0, toCurse - 1);
 
       let x: number, z: number, r: number;
@@ -485,7 +474,7 @@ const init = async () => {
         if (iters > 100) {
           break;
         }
-      } while (dandelions.some((d) => d.position.distanceTo(new THREE.Vector3(x, 0, z)) < 0.2));
+      } while (dandelions.some((d) => d.position.distanceTo(new THREE.Vector3(x, 0, z)) < 0.5));
 
       dandelion.position.set(x, 0, z);
       dandelion.position.setY(getTerrainHeight(x, z) - 0.5);
@@ -590,10 +579,9 @@ const init = async () => {
     }
     // Launch as many ships as the target has lives
     for (let i = 0; i < target.userData.lives; i++) {
-      const startPos = target.position;
-      // startPos.add(
-      //   new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5),
-      // );
+      const startPos = target.position.clone();
+      v1.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      startPos.add(v1);
       const startRot = new THREE.Vector3(Math.random(), Math.random(), Math.random());
       const owner = "e";
       unitQueue.push({ pos: startPos, rot: startRot, start: target, target: targets[0]!, owner });
@@ -624,9 +612,6 @@ const init = async () => {
         }
       } else if (dataAgg[i + 3] < 0) {
         // Check if the ship has collided
-
-        // The ship has collided
-
         const index = Math.floor((-dataAgg[i + 3] - 0.5) * WIDTH);
         const target = targets[index];
         // Deduct points from the castle or perform other actions
@@ -789,9 +774,6 @@ const init = async () => {
         dandelionToRemove.position.y -=
           (1000 - dandelionToRemove.userData.removeIn) * 0.01 * (delta / 1000);
 
-        // const opacity = Math.max(0, dandelionToRemove.userData.removeIn / 1000);
-        // dandelionToRemove.userData.stemMaterial.opacity = opacity;
-        // dandelionToRemove.userData.flowerMaterial.opacity = opacity;
         if (dandelionToRemove.userData.removeIn <= 0) {
           removeDandelion(dandelionToRemove);
         }
@@ -826,6 +808,15 @@ const init = async () => {
     }
     if (pickedUpDandelion && pickedUpDandelion.userData.seeds > 0) {
       selectedTarget = targeting();
+    } else {
+      // Restore all targets to normal color
+      for (let i = 2; i < targets.length; i++) {
+        const target = targets[i];
+        if (target) {
+          (target.material as THREE.MeshPhongMaterial).color.setRGB(1, 0, 0);
+          target.userData.currentTarget = false;
+        }
+      }
     }
     if (analyzer && pickedUpDandelion) {
       // Only use the higher frequencies
@@ -843,6 +834,26 @@ const init = async () => {
     }
 
     if (gameStarted) {
+      if (tutorialTimer === 0) {
+        w?.setScale(0.5);
+      }
+      tutorialTimer += delta;
+      if (tutorialTimer < 5000) {
+        w?.updateText("Pick up dandelion with trigger");
+      } else if (tutorialTimer < 10000) {
+        w?.updateText("Blow it to launch");
+      } else if (tutorialTimer < 15000) {
+        w?.setScale(1.0);
+        w?.updateText("");
+      }
+
+      for (let i = 2; i < targets.length; i++) {
+        // skip first two targets
+        const target = targets[i];
+        if (target && !target.userData.currentTarget) {
+          syncLivesText(target);
+        }
+      }
       // Check if any enemy ships want to launch
       if (frame % 10 === 0) {
         targets.forEach((target) => {
@@ -856,8 +867,8 @@ const init = async () => {
       moveEnemies();
       if (frame % 10 === 0) {
         syncWithGPU();
-        // updateEnemyPositionsInTexture();
       }
+
       lastGenerationTime = lastGenerationTime || Date.now();
       gpuCompute.compute(computeCallbacks);
 
@@ -872,41 +883,7 @@ const init = async () => {
   }
   renderer["setAnimationLoop"](render);
 
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-
-  function getPointerPosition(event: PointerEvent) {
-    return { x: event.clientX, y: event.clientY };
-  }
-
-  function onPointerDown(event: PointerEvent) {
-    const position = getPointerPosition(event);
-    mouse.x = (position.x / window.innerWidth) * 2 - 1;
-    mouse.y = -(position.y / window.innerHeight) * 2 + 1;
-
-    raycaster["setFromCamera"](mouse, camera);
-    const intersects = raycaster["intersectObjects"](dandelions);
-
-    console.log(event, intersects);
-    if (intersects.length > 0) {
-      event?.preventDefault();
-      const dandelion = intersects[0].object;
-      if (pickedUpDandelion?.userData.seeds === 0) {
-        // We have a dandelion in hand, but no seeds
-        dandelionToRemove = dandelion.parent;
-        pickedUpDandelion = null;
-      } else if (dandelion.parent && dandelion.parent === pickedUpDandelion && selectedTarget) {
-        // Temp targeting logic
-        console.log("Firing dandelion");
-        blowDandelion(dandelion.parent, selectedTarget);
-      } else if (dandelion.parent) {
-        console.log("Clicked dandelion", dandelion);
-        pickUpDandelion(dandelion);
-      }
-    }
-  }
-
-  function pickUpDandelion(dandelion: THREE.Object3D, controllerIndex?: number) {
+  function pickUpDandelion(dandelion: THREE.Object3D, controllerIndex: number) {
     // Add dandelion to the controller
     if (dandelionToRemove) {
       removeDandelion(dandelionToRemove);
@@ -915,15 +892,7 @@ const init = async () => {
       if (controllerIndex !== undefined) {
         // in VR
         controllers[controllerIndex].add(dandelion.parent);
-        dandelion.parent.position.set(0, 0.5, -0.1);
-      }
-      // With a mouse, we want to move the dandelion to the center of the screen, at a fixed distance
-      else {
-        const center = new THREE.Vector3(0, 2, 0);
-        // center.applyQuaternion(camera.quaternion);
-        // center.add(camera.position);
-        dandelion.parent.position.copy(center);
-        // scene.add(dandelion.parent);
+        dandelion.parent.position.set(0, 0.2, -0.1);
       }
       console.log("Picked up dandelion", dandelion);
       pickedUpDandelion = dandelion.parent;
@@ -956,7 +925,7 @@ const init = async () => {
     c.add(d1);
     if (text) {
       d1.position.set(0, y, 0);
-      d1.rotation.set(0, Math.PI / 2, 0);
+      d1.rotation.set(0, -Math.PI / 2, 0);
       d1.updateMatrixWorld(true);
       d1.getWorldQuaternion(q1);
       d1.getWorldPosition(v1);
@@ -986,13 +955,10 @@ const init = async () => {
   }
 
   function onSelectEnd(i: number) {
-    dandelionToRemove = pickedUpDandelion;
-    pickedUpDandelion = null;
-    // console.log("select end", startPlace, intersectedPlace);
-    // endPlace = intersectedPlace;
-    // const intersects = intersectsFromController(i);
-    // handleClickOrTriggerEnd(intersects);
-    // controllerLock = null;
+    if (pickedUpDandelion) {
+      dandelionToRemove = pickedUpDandelion;
+      pickedUpDandelion = null;
+    }
   }
 
   async function startGame() {
@@ -1007,8 +973,6 @@ const init = async () => {
 
     document.getElementById("s")?.remove();
     gameStarted = true;
-
-    window.addEventListener("pointerdown", onPointerDown, false);
 
     (window as any).scene = scene;
   }
@@ -1028,7 +992,6 @@ const init = async () => {
       button.style.color = "#fff";
       button.addEventListener("click", startGame);
     }
-    // button.addEventListener("click", startGame);
   }
 
   function initSeeds() {
@@ -1103,7 +1066,7 @@ const init = async () => {
 
     // Find a random empty spot in targets array and add the enemy
     const emptySpotsIndexes = targets
-      .map((t, i) => (t && i > 1 ? null : i)) // Skip the first two spots, reserved for player
+      .map((t, i) => (t || i <= 1 ? null : i)) // Reserve spots 0 and 1 for player
       .filter((i) => i !== null);
 
     const index = emptySpotsIndexes[Math.floor(Math.random() * emptySpotsIndexes.length)];
@@ -1173,10 +1136,12 @@ const init = async () => {
         sphere.userData.rising = false;
       }
 
-      // Move towards center
-      const directionToCenter = new THREE.Vector3()
-        .subVectors(new THREE.Vector3(0, 1.5, 0), sphere.position)
-        .normalize();
+      // Move towards player
+      const center = new THREE.Vector3(0, 1.5, 0);
+      if (targets[0]) {
+        center.copy(targets[0].position);
+      }
+      const directionToCenter = new THREE.Vector3().subVectors(center, sphere.position).normalize();
 
       sphere.position.add(directionToCenter.multiplyScalar(0.01 * (wave + 1)));
 
@@ -1222,17 +1187,14 @@ const init = async () => {
       unit.rot = webglDirection;
       units.push(unit as Unit);
     }
+    if (units.length === 13) {
+      w?.updateText("Hacked");
+    }
     unitQueue.push(...units);
     console.log(units.length, "units added to queue");
 
     dandelion.userData.seeds = 0;
 
-    // Restore all targets to normal color
-    targets.forEach((t) => {
-      if (t) {
-        (t.material as THREE.MeshPhongMaterial).color.setRGB(1, 0, 0);
-      }
-    });
     syncLivesText(target);
   }
 

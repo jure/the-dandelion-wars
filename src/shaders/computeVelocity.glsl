@@ -76,9 +76,9 @@ float encodeFloats(float a, float b) {
           }
 
           vec3 dPos = pos2 - pos;
-          float distance = length( dPos );
+          float dis = length( dPos );
 
-          if ( distance == 0.0 ) {
+          if ( dis == 0.0 ) {
             continue;
           }
 
@@ -87,24 +87,24 @@ float encodeFloats(float a, float b) {
           // 0.6 is our ship
           // 0.601 is the enemy ship?
 
-          float distanceSq = distance * distance;
-          // float distanceSq = max(distance * distance, 0.0001);
+          float disSq = dis * dis;
+          // float disSq = max(dis * dis, 0.0001);
 
           if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, start)) {
             // Gradually increase force multiplier the further we are from start,
             // up to 1.0
-            forceMultiplier = min(1.0, distanceSq / 100.0);
+            forceMultiplier = min(1.0, disSq / 100.0);
           }
 
           // "hacked"/cursed seeds have a different effect, launched from 0.5234
-          if (distance < .5 && compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass) && compareFloats(start, 0.5234)) {
+          if (dis < .5 && compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass) && compareFloats(start, 0.5234)) {
             vel = vec3(0);
             gl_FragColor = vec4( vel, -mass - 1e5); // negative mass times minus a million is a cursed target indicator
             return;
           }
           // Collide with target, the only way to kill a particle
           // 0.6 type is ships, in that case mass is target id
-          if ( distance < .5 && compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
+          if ( dis < .5 && compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
             // This particle dies
             vel = vec3(0); 
             gl_FragColor = vec4( vel, -mass ); // negative mass is a dead target indicator
@@ -113,20 +113,20 @@ float encodeFloats(float a, float b) {
 
           if ( compareFloats(ourType, 0.6) && compareFloats(theirType, 0.6)) {
             // Ship interactions (all avoid each other)
-            float nearField = (-0.4) / (distanceSq); // distance to the 4th power
+            float nearField = (-0.4) / (disSq); // dis to the 4th power
             
             acceleration += nearField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(idParticle2, mass)) {
             // Ships are attracted to the destination
             // Gravity towards destination
 
-            float gravityField = gravityConstant * mass2 / distance;
+            float gravityField = gravityConstant * mass2 / dis;
             //gravityField = min( gravityField, 2. );
 
             acceleration += gravityField * normalize( dPos );
           } else if (compareFloats(ourType, 0.6) && compareFloats(theirType, 0.1)) { 
             // Ships are repelled by other castles too, but only when they are close
-            float repulsionField = -0.2*gravityConstant * mass2 / (distanceSq*distanceSq);
+            float repulsionField = -0.2*gravityConstant * mass2 / (disSq*disSq);
             //repulsionField = min( repulsionField, 2. );
 
             // acceleration += repulsionField * normalize( dPos );

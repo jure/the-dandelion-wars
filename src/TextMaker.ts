@@ -238,9 +238,9 @@ export default class TextMaker {
   _data: Uint8Array;
   _dummies: THREE.Object3D[];
   _scales: number[];
-  _followingCameraRotation: number[];
+  _folCamRot: number[];
   // Array of { instanceId, x, y, z }
-  _followingCamera: Record<string, number>[];
+  _folCam: Record<string, number>[];
   _tempQuat: THREE.Quaternion;
   _dummy: THREE.Object3D;
   _tempQuat2: THREE.Quaternion;
@@ -271,17 +271,9 @@ export default class TextMaker {
       this._maxInstances, // height
       THREE.RedFormat,
     );
-    // this._messagesTexture.magFilter = THREE.NearestFilter;
-    // this._messagesTexture.minFilter = THREE.NearestFilter;
-    // this._messagesTexture.wrapS = THREE.ClampToEdgeWrapping;
-    // this._messagesTexture.wrapT = THREE.ClampToEdgeWrapping;
-    // this._messagesTexture.repeat.set(2, 2);
-    // this._messagesTexture.offset.set(5.5, 7.5);
-    // this._messagesTexture.generateMipmaps = true;
-    // this._messagesTexture.needsUpdate = true;
 
-    this._followingCameraRotation = [];
-    this._followingCamera = [];
+    this._folCamRot = [];
+    this._folCam = [];
     this._dummy = new THREE.Object3D();
     this._tempQuat = new THREE.Quaternion();
     this._tempQuat2 = new THREE.Quaternion();
@@ -322,32 +314,24 @@ export default class TextMaker {
 
     this.instancedMesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
       camera.matrixWorld.decompose(this._dummy.position, this._dummy.quaternion, this._dummy.scale);
-      if (this._followingCameraRotation.length > 0) {
-        for (let i = 0; i < this._followingCameraRotation.length; i++) {
-          this._dummies[this._followingCameraRotation[i]].quaternion.copy(this._dummy.quaternion);
-          this.updateMatrix(this._followingCameraRotation[i]);
+      if (this._folCamRot.length > 0) {
+        for (let i = 0; i < this._folCamRot.length; i++) {
+          this._dummies[this._folCamRot[i]].quaternion.copy(this._dummy.quaternion);
+          this.updateMatrix(this._folCamRot[i]);
         }
       }
-      if (this._followingCamera.length > 0) {
-        for (let i = 0; i < this._followingCamera.length; i++) {
-          const offset = new THREE.Vector3(
-            this._followingCamera[i].x,
-            this._followingCamera[i].y,
-            this._followingCamera[i].z,
-          );
+      if (this._folCam.length > 0) {
+        for (let i = 0; i < this._folCam.length; i++) {
+          const offset = new THREE.Vector3(this._folCam[i].x, this._folCam[i].y, this._folCam[i].z);
           offset.applyQuaternion(this._dummy.quaternion);
           // Update position: camera position + offset
-          this._dummies[this._followingCamera[i].instanceId].position
-            .copy(this._dummy.position)
-            .add(offset);
+          this._dummies[this._folCam[i].instanceId].position.copy(this._dummy.position).add(offset);
 
           // Update rotation to match the camera
-          this._dummies[this._followingCamera[i].instanceId].quaternion.copy(
-            this._dummy.quaternion,
-          );
+          this._dummies[this._folCam[i].instanceId].quaternion.copy(this._dummy.quaternion);
 
           // Update the instance matrix
-          this.updateMatrix(this._followingCamera[i].instanceId);
+          this.updateMatrix(this._folCam[i].instanceId);
         }
       }
     };
@@ -441,10 +425,10 @@ export default class TextMaker {
     color && this.setColor(instanceId, color);
 
     if (followCameraRotation) {
-      this._followingCameraRotation.push(instanceId);
+      this._folCamRot.push(instanceId);
     }
     if (followCamera) {
-      this._followingCamera.push({
+      this._folCam.push({
         instanceId,
         x: followCamera[0],
         y: followCamera[1],
