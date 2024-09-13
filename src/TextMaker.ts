@@ -239,7 +239,8 @@ export default class TextMaker {
   _dummies: THREE.Object3D[];
   _scales: number[];
   _followingCameraRotation: number[];
-  _followingCamera: number[];
+  // Array of { instanceId, x, y, z }
+  _followingCamera: Record<string, number>[];
   _tempQuat: THREE.Quaternion;
   _dummy: THREE.Object3D;
   _tempQuat2: THREE.Quaternion;
@@ -327,6 +328,28 @@ export default class TextMaker {
           this.updateMatrix(this._followingCameraRotation[i]);
         }
       }
+      if (this._followingCamera.length > 0) {
+        for (let i = 0; i < this._followingCamera.length; i++) {
+          const offset = new THREE.Vector3(
+            this._followingCamera[i].x,
+            this._followingCamera[i].y,
+            this._followingCamera[i].z,
+          );
+          offset.applyQuaternion(this._dummy.quaternion);
+          // Update position: camera position + offset
+          this._dummies[this._followingCamera[i].instanceId].position
+            .copy(this._dummy.position)
+            .add(offset);
+
+          // Update rotation to match the camera
+          this._dummies[this._followingCamera[i].instanceId].quaternion.copy(
+            this._dummy.quaternion,
+          );
+
+          // Update the instance matrix
+          this.updateMatrix(this._followingCamera[i].instanceId);
+        }
+      }
     };
   }
 
@@ -393,7 +416,7 @@ export default class TextMaker {
     message: string,
     color?: THREE.Color,
     followCameraRotation?: boolean,
-    followCamera?: boolean,
+    followCamera?: [number, number, number],
   ): null | TextInstance {
     let instanceId = this._instanceCount;
     const poolInstance = this._pool.pop();
@@ -421,7 +444,12 @@ export default class TextMaker {
       this._followingCameraRotation.push(instanceId);
     }
     if (followCamera) {
-      this._followingCamera.push(instanceId);
+      this._followingCamera.push({
+        instanceId,
+        x: followCamera[0],
+        y: followCamera[1],
+        z: followCamera[2],
+      });
     }
 
     // Return the instanceId for future updates and increment for the next use
@@ -462,8 +490,8 @@ export default class TextMaker {
     this.updateMatrix(instanceId);
   }
 
-  setRotation(instanceId: number, x: number, y: number, z: number) {
-    this._dummies[instanceId].rotation.set(x, y, z);
+  setRotation(instanceId: number, q: THREE.Quaternion) {
+    this._dummies[instanceId].setRotationFromQuaternion(q);
     this.updateMatrix(instanceId);
   }
 
